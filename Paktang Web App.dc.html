@@ -88,7 +88,7 @@
           <span style="font-size:15px;font-weight:600;color:var(--text-primary)">พร้อมออกเดิน</span>
         </sc-if>
         <div style="display:flex;gap:10px;justify-content:space-between">
-          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ pinHere }}" hint-size="160px,50px">ปักหมุดที่นี่</x-import>
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ pinMain }}" hint-size="160px,50px">{{ pinMainLabel }}</x-import>
           <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="{{ recVariant }}" size="lg" onClick="{{ toggleRec }}" hint-size="140px,50px">{{ recLabel }}</x-import>
         </div>
       </div>
@@ -144,7 +144,7 @@
         </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:space-between">
-          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ pinHere }}" hint-size="160px,50px">ปักหมุดที่นี่</x-import>
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ pinMain }}" hint-size="160px,50px">{{ pinMainLabel }}</x-import>
           <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="{{ recVariant }}" size="lg" onClick="{{ toggleRec }}" hint-size="140px,50px">{{ recLabel }}</x-import>
         </div>
       </div>
@@ -241,9 +241,6 @@
       </div>
     </sc-if>
 
-    <sc-if value="{{ canRoutePin }}" hint-placeholder-val="{{ false }}">
-      <button onClick="{{ startPinMode }}" style="position:absolute;left:14px;bottom:{{ routePinBottom }};transition:{{ cTrans }};height:44px;padding:0 16px;border-radius:var(--radius-full);border:none;background:var(--brand-primary);box-shadow:var(--shadow-md);z-index:20;cursor:pointer;font-family:var(--font-body);font-size:15px;font-weight:600;color:#fff" style-hover="background:var(--brand-primary-hover)" style-active="transform:scale(0.97)">+ ปักบนเส้นทาง</button>
-    </sc-if>
     <sc-if value="{{ pinMode }}" hint-placeholder-val="{{ false }}">
       <div style="position:absolute;left:14px;right:14px;top:calc(env(safe-area-inset-top) + 92px);z-index:30;background:var(--surface-inverse);color:var(--text-inverse);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:10px 10px 10px 16px;display:flex;align-items:center;gap:10px">
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
@@ -1213,7 +1210,12 @@ class Component extends DCLogic {
       pinMode: !!s.pinMode && found && !s.rec,
       pinModeSub: ((tr.pts && tr.pts.some(q => q[3])) ? 'ความสูงและเวลาจากไฟล์ GPX' : 'ความสูงจากเส้นทาง') + ' · ' + trPins.length + ' หมุดในเส้นทางนี้',
       endPinMode: () => this.setState({ pinMode: false }),
-      canRoutePin: found && !s.rec && !s.pinMode && !s.picker && !s.pinsOpen && !s.histOpen,
+      pinMainLabel: s.rec ? 'ปักหมุดที่นี่' : s.pinMode ? 'เสร็จการปักหมุด' : '+ ปักบนเส้นทาง',
+      pinMain: () => {
+        if (s.rec) return this.pinHereFn();
+        if (!found) { this.showToast('กรุณาเลือกเส้นทางก่อน', 'เลือกเส้นทาง', () => this.setState({ picker: true, toast: null })); return; }
+        this.setState(st => ({ pinMode: !st.pinMode, toast: null, cH: st.pinMode ? st.cH : 172 }));
+      },
       startPinMode: () => this.setState({ pinMode: true, toast: null }),
       routePinBottom: (s.cH + 72) + 'px',
       layerOpen: !!s.layerOpen,
@@ -1228,13 +1230,14 @@ class Component extends DCLogic {
       zoomTop: L === 'c' ? 'calc(50% - ' + Math.round(s.cH / 2) + 'px + 40px)' : 'calc(50% - 48px)',
       locate: () => this.map && this.map.flyTo(this.center(me, 16), 16, { duration: 0.6 }),
       toggleRec: this.toggleRec,
-      pinHere: () => {
+      pinHere: () => this.pinHereFn(),
+      _pinHere: (this.pinHereFn = () => {
         if (!found) { this.showToast('กำลังรอสัญญาณ GPS'); return; }
         const now = new Date(), p2 = n => String(n).padStart(2, '0');
         const pin = { id: Date.now(), trail: s.trailId, type: 'view', note: '', lat: me[0], lng: me[1], ele: this.realMode && s.rEle != null ? s.rEle : this.eles[s.idx], at: p2(now.getHours()) + ':' + p2(now.getMinutes()), photos: [] };
         this.setState(st => ({ pins: [...st.pins, pin], lastId: pin.id }), () => this.syncPins());
         this.showToast('ปักหมุดแล้ว · ' + pin.ele.toLocaleString() + ' ม.', 'แก้ไข', () => this.openPin(pin.id));
-      },
+      }),
       toastAction: () => this.toastFn && this.toastFn(),
       hasToast: !!s.toast, toast: s.toast || {},
       toastTop: s.pinMode ? 'calc(env(safe-area-inset-top) + 160px)' : 'calc(env(safe-area-inset-top) + 92px)',
