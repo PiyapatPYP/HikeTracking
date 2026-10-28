@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="ds/saraly/tokens/colors.css">
+<link rel="stylesheet" href="ds/saraly/tokens/typography.css">
+<link rel="stylesheet" href="ds/saraly/tokens/spacing.css">
+<link rel="stylesheet" href="ds/saraly/tokens/effects.css">
+<link rel="stylesheet" href="ds/saraly/styles.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1A8FE3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ปักทาง">
+<link rel="apple-touch-icon" href="icon-512.png">
+<title>ปักทาง</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/dexie@4.0.8/dist/dexie.min.js"></script>
+<script src="ds/saraly/ds_bundle.js"></script>
+<style>:root{--color-white:#FFFFFF;--color-cream-50:#F3FAFD;--color-cream-100:#E6F2F8;--color-cream-200:#D6E8F1;--color-cream-300:#BCD5E3;--color-warm-gray-400:#8FAABB;--color-warm-gray-500:#5A7486;--color-warm-gray-600:#43627A;--color-warm-gray-700:#2C4A60;--color-warm-gray-800:#12324A;--color-warm-gray-900:#0A1F30;--brand-primary:#1A8FE3;--brand-primary-hover:#1476C4;--brand-primary-active:#0F5E9E;--brand-primary-tint:#E4F2FD;--brand-secondary:#1FAE6E;--brand-secondary-hover:#168A57;--brand-secondary-tint:#E2F7EC;--surface-page:#F3FAFD;--surface-card:#FFFFFF;--surface-sunken:#E6F2F8;--surface-inverse:#0F2A3F;--border-subtle:#D6E8F1;--border-default:#BCD5E3;--border-strong:#8FAABB;--text-primary:#12324A;--text-secondary:#43627A;--text-muted:#5A7486;--text-inverse:#F3FAFD;--semantic-success:#1FAE6E;--semantic-success-tint:#E2F7EC;--semantic-info:#1A8FE3;--semantic-info-tint:#E4F2FD}html,body{height:100%;overscroll-behavior:none}body{margin:0;background:var(--surface-page);-webkit-tap-highlight-color:transparent;font-family:var(--font-body)}a{color:var(--text-link)}a:hover{color:var(--text-link-hover)}.leaflet-container{font-family:var(--font-body);background:#DCEAF2}.leaflet-div-icon{background:none;border:none}.leaflet-control-attribution{font-size:9px!important}</style>
+</helmet>
+<div data-screen-label="ปักทาง" style="position:fixed;inset:0;background:var(--surface-page);font-family:var(--font-body)">
+  <div style="position:relative;width:100%;height:100%;overflow:hidden;background:var(--surface-page)">
+    <div ref="{{ mapRef }}" style="position:absolute;inset:0;isolation:isolate;z-index:0;background:#DCEAF2"></div>
+
+    <div style="position:absolute;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--surface-page);z-index:75"></div>
+
+    <sc-if value="{{ showHeader }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:14px;right:14px;z-index:20;display:flex;gap:10px;align-items:stretch">
+      <div style="flex:1;min-width:0;background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:12px 12px 12px 16px;display:flex;align-items:center;gap:10px">
+        <button onClick="{{ openPicker }}" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;align-items:flex-start;border:none;background:none;padding:0;text-align:left;cursor:pointer;font-family:var(--font-body)">
+          <span style="max-width:100%;font-size:16px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ trailName }}</span>
+          <span style="max-width:100%;display:flex;gap:6px;font-size:13px;color:var(--text-secondary);white-space:nowrap"><span style="overflow:hidden;text-overflow:ellipsis">{{ trailSub }}</span><span style="flex:none;font-weight:600;color:var(--brand-primary)">เปลี่ยน ›</span></span>
+        </button>
+        <sc-if value="{{ offDone }}" hint-placeholder-val="{{ false }}">
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Badge" tone="success" hint-size="80px,22px">ออฟไลน์ได้</x-import>
+        </sc-if>
+        <sc-if value="{{ offNotDone }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ download }}" style="flex:none;height:36px;padding:0 10px;border-radius:var(--radius-full);border:1px solid var(--border-default);background:var(--surface-card);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;font-variant-numeric:tabular-nums">{{ offTxt }}</button>
+        </sc-if>
+      </div>
+      <button onClick="{{ openHistory }}" style="position:relative;flex:none;width:54px;border:1px solid var(--border-subtle);border-radius:var(--radius-lg);background:var(--surface-card);box-shadow:var(--shadow-md);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0" style-hover="background:var(--color-cream-100)"><span style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:{{ syncDot }}"></span><span style="font-size:18px;font-weight:700;color:var(--brand-primary)">{{ histCount }}</span>ประวัติ</button>
+      </div>
+    </sc-if>
+
+    <div style="position:absolute;right:14px;top:{{ zoomTop }};transition:{{ cTrans }};z-index:20;display:flex;flex-direction:column;background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-full);box-shadow:var(--shadow-md);overflow:hidden">
+      <button onClick="{{ zoomIn }}" aria-label="ซูมเข้า" style="width:48px;height:48px;border:none;background:transparent;font-family:var(--font-body);font-size:24px;font-weight:600;color:{{ zinColor }};cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:var(--color-cream-100)">+</button>
+      <span style="height:1px;margin:0 10px;background:var(--border-subtle)"></span>
+      <button onClick="{{ zoomOut }}" aria-label="ซูมออก" style="width:48px;height:48px;border:none;background:transparent;font-family:var(--font-body);font-size:24px;font-weight:600;color:{{ zoutColor }};cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:var(--color-cream-100)">−</button>
+    </div>
+    <button onClick="{{ toggleLayers }}" aria-label="เลือกแผนที่" style="position:absolute;right:14px;top:calc({{ zoomTop }} + 108px);transition:{{ cTrans }};z-index:20;width:48px;height:48px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);background:var(--surface-card);box-shadow:var(--shadow-md);cursor:pointer;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" style-hover="background:var(--color-cream-100)">
+      <span style="width:18px;height:6px;border-radius:2px;background:var(--brand-primary)"></span>
+      <span style="width:18px;height:6px;border-radius:2px;background:var(--brand-secondary)"></span>
+    </button>
+    <sc-if value="{{ layerOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeLayers }}" style="position:absolute;inset:0;z-index:21"></div>
+      <div style="position:absolute;right:72px;top:calc({{ zoomTop }} + 20px);z-index:22;width:236px;background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:8px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted);padding:6px 10px 2px">แผนที่</span>
+        <sc-for list="{{ layerList }}" as="ly" hint-placeholder-count="3">
+          <button onClick="{{ ly.pick }}" style="text-align:left;font-family:var(--font-body);min-height:52px;padding:8px 10px;border-radius:var(--radius-md);border:1.5px solid {{ ly.bd }};background:{{ ly.bg }};cursor:pointer;display:flex;flex-direction:column;gap:1px" style-hover="background:var(--color-cream-50)">
+            <span style="font-size:15px;font-weight:{{ ly.fw }};color:var(--text-primary)">{{ ly.label }}</span>
+            <span style="font-size:12px;color:var(--text-secondary)">{{ ly.desc }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isA }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ locate }}" style="position:absolute;right:14px;bottom:{{ aLocBottom }};width:48px;height:48px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);background:var(--surface-card);box-shadow:var(--shadow-md);z-index:20;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span style="width:14px;height:14px;border-radius:50%;border:3px solid var(--semantic-info);box-sizing:border-box"></span></button>
+      <div style="position:absolute;left:14px;right:14px;bottom:34px;z-index:20;background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:16px;display:flex;flex-direction:column;gap:14px">
+        <sc-if value="{{ rec }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--semantic-danger)"><span style="width:8px;height:8px;border-radius:50%;background:var(--semantic-danger)"></span>กำลังบันทึกเส้นทาง</div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">เวลา</span><span style="font-size:20px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ timeTxt }}</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ระยะทาง</span><span style="font-size:20px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ distTxt }} <span style="font-size:13px;font-weight:500">กม.</span></span></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ความสูง</span><span style="font-size:20px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ eleTxt }} <span style="font-size:13px;font-weight:500">ม.</span></span><span style="font-size:12px;font-weight:600;color:var(--brand-primary);font-variant-numeric:tabular-nums">สูงสุด {{ trailMaxTxt }}</span></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ notRec }}" hint-placeholder-val="{{ true }}">
+          <span style="font-size:15px;font-weight:600;color:var(--text-primary)">พร้อมออกเดิน</span>
+        </sc-if>
+        <div style="display:flex;gap:10px;justify-content:space-between">
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ pinHere }}" hint-size="160px,50px">ปักหมุดที่นี่</x-import>
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="{{ recVariant }}" size="lg" onClick="{{ toggleRec }}" hint-size="140px,50px">{{ recLabel }}</x-import>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isB }}" hint-placeholder-val="{{ false }}">
+      <sc-if value="{{ rec }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:14px;right:14px;z-index:20;background:var(--surface-inverse);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:14px 18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;color:var(--text-inverse)">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--color-cream-300)">เวลา</span><span style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">{{ timeTxt }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--color-cream-300)">ระยะทาง กม.</span><span style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">{{ distTxt }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--color-cream-300)">ความสูง ม.</span><span style="font-size:22px;font-weight:700;font-variant-numeric:tabular-nums">{{ eleTxt }}</span><span style="font-size:12px;font-weight:600;color:var(--color-cream-300);font-variant-numeric:tabular-nums">สูงสุด {{ trailMaxTxt }}</span></div>
+        </div>
+      </sc-if>
+      <div style="position:absolute;left:0;right:0;bottom:40px;z-index:20;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 28px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;justify-self:start">
+          <button onClick="{{ toggleRec }}" style="width:60px;height:60px;border-radius:var(--radius-full);border:none;background:{{ bRecBg }};box-shadow:var(--shadow-md);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span style="width:{{ bRecDot }};height:{{ bRecDot }};border-radius:{{ bRecRadius }};background:#fff"></span></button>
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary);background:rgba(251,249,246,.9);padding:2px 8px;border-radius:var(--radius-full)">{{ recShort }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <button onClick="{{ pinHere }}" style="width:92px;height:92px;border-radius:var(--radius-full);border:5px solid #fff;background:var(--brand-primary);box-shadow:var(--shadow-lg);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:var(--font-body);font-size:20px;font-weight:700;color:#fff" style-hover="background:var(--brand-primary-hover)" style-active="transform:scale(0.97)">ปัก</button>
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary);background:rgba(251,249,246,.9);padding:2px 8px;border-radius:var(--radius-full)">ปักหมุดที่นี่</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;justify-self:end">
+          <button onClick="{{ locate }}" style="width:60px;height:60px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);background:var(--surface-card);box-shadow:var(--shadow-md);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span style="width:16px;height:16px;border-radius:50%;border:3px solid var(--semantic-info);box-sizing:border-box"></span></button>
+          <span style="font-size:13px;font-weight:600;color:var(--text-primary);background:rgba(251,249,246,.9);padding:2px 8px;border-radius:var(--radius-full)">ตำแหน่ง</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isC }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ locate }}" style="position:absolute;right:14px;bottom:{{ cLocBottom }};transition:{{ cTrans }};width:48px;height:48px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);background:var(--surface-card);box-shadow:var(--shadow-md);z-index:20;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0"><span style="width:14px;height:14px;border-radius:50%;border:3px solid var(--semantic-info);box-sizing:border-box"></span></button>
+      <div style="position:absolute;left:0;right:0;bottom:0;height:{{ cH }};transition:{{ cTrans }};z-index:20;background:var(--surface-card);border-radius:28px 28px 0 0;box-shadow:var(--shadow-lg);padding:0 20px 34px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+        <div onPointerDown="{{ dragStart }}" style="display:flex;flex-direction:column;gap:14px;padding-top:10px;margin:0 -20px;padding-left:20px;padding-right:20px;touch-action:none;cursor:grab;user-select:none">
+        <span style="align-self:center;width:40px;height:5px;border-radius:3px;background:var(--border-default)"></span>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span style="font-size:18px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ cTitle }}</span>
+          <sc-if value="{{ rec }}" hint-placeholder-val="{{ false }}"><x-import component-from-global-scope="SaralyDesignSystem_019e00.Badge" tone="danger" hint-size="80px,22px">กำลังบันทึก</x-import></sc-if>
+        </div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:14px;opacity:{{ cBodyOpacity }};transition:opacity 160ms">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">เวลา</span><span style="font-size:17px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ timeTxt }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">กม.</span><span style="font-size:17px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ distTxt }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ความสูง ม.</span><span style="font-size:17px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ eleTxt }}</span><span style="font-size:12px;font-weight:600;color:var(--brand-primary);font-variant-numeric:tabular-nums">สูงสุด {{ trailMaxTxt }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ขึ้นสะสม ม.</span><span style="font-size:17px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ gainTxt }}</span></div>
+        </div>
+        <div style="background:var(--surface-sunken);border-radius:var(--radius-md);padding:10px 12px;display:flex;flex-direction:column;gap:4px">
+          <svg viewBox="0 0 300 60" preserveAspectRatio="none" style="width:100%;height:60px;display:block">
+            <polyline points="{{ planLine }}" fill="none" stroke="var(--border-strong)" stroke-width="1.5" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"></polyline>
+            <polyline points="{{ doneLine }}" fill="none" stroke="var(--brand-secondary)" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>เริ่ม</span><span>ระดับความสูงตลอดเส้นทาง</span><span>{{ trailLen }} กม.</span></div>
+        </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:space-between">
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ pinHere }}" hint-size="160px,50px">ปักหมุดที่นี่</x-import>
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="{{ recVariant }}" size="lg" onClick="{{ toggleRec }}" hint-size="140px,50px">{{ recLabel }}</x-import>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasSheet }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(43,36,29,0.4);z-index:50"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:60;background:var(--surface-card);border-radius:28px 28px 0 0;padding:10px 20px 34px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow-lg)">
+        <span style="align-self:center;width:40px;height:5px;border-radius:3px;background:var(--border-default)"></span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:22px;font-weight:700;color:var(--text-primary);text-wrap:pretty">{{ sel.title }}</span>
+          <span style="font-size:13px;color:var(--text-secondary);font-variant-numeric:tabular-nums">{{ sel.coord }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:var(--surface-sunken);border-radius:var(--radius-md);padding:12px 14px">
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ความสูง</span><span style="font-size:15px;font-weight:600;color:var(--text-primary)">{{ sel.ele }} ม.</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ห่างจากคุณ</span><span style="font-size:15px;font-weight:600;color:var(--text-primary)">{{ sel.away }}</span></div>
+          <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;color:var(--text-muted)">ปักเมื่อ</span><span style="font-size:15px;font-weight:600;color:var(--text-primary)">{{ sel.at }}</span></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ typeChips }}" as="c" hint-placeholder-count="5">
+            <button onClick="{{ c.pick }}" style="display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:var(--radius-full);border:1.5px solid {{ c.bd }};background:{{ c.bg }};font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--text-primary);cursor:pointer"><span style="width:10px;height:10px;border-radius:50%;background:{{ c.color }}"></span>{{ c.label }}</button>
+          </sc-for>
+        </div>
+        <textarea value="{{ sel.note }}" onChange="{{ setNote }}" placeholder="เพิ่มโน้ต เช่น ลำธารน้ำใส เติมน้ำได้" rows="2" style="border:1px solid var(--border-default);border-radius:var(--radius-md);padding:10px 12px;font-family:var(--font-body);font-size:16px;color:var(--text-primary);resize:none;outline:none;background:var(--surface-card)"></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:13px;color:var(--text-muted)">{{ sel.photoTxt }}</span>
+          <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
+            <sc-for list="{{ sel.photos }}" as="ph" hint-placeholder-count="0">
+              <div style="position:relative;flex:none;width:76px;height:76px;border-radius:var(--radius-md);overflow:hidden;background:var(--surface-sunken);border:1px solid var(--border-subtle)">
+                <img onClick="{{ ph.view }}" src="{{ ph.src }}" alt="รูปที่หมุด" style="width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in">
+                <button onClick="{{ ph.remove }}" style="position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:2px solid #fff;background:var(--surface-inverse);color:#fff;font-size:14px;line-height:1;cursor:pointer;padding:0">×</button>
+              </div>
+            </sc-for>
+            <button onClick="{{ pickPhoto }}" style="flex:none;width:76px;height:76px;border:1.5px dashed var(--border-default);border-radius:var(--radius-md);background:var(--surface-sunken);font-family:var(--font-body);font-size:14px;font-weight:600;color:var(--text-secondary);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px" style-hover="background:var(--color-cream-200)"><span style="font-size:22px;line-height:1">+</span>เพิ่มรูป</button>
+          </div>
+          <input ref="{{ fileRef }}" type="file" accept="image/*" multiple onChange="{{ onFiles }}" style="display:none">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:space-between">
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="ghost" size="lg" onClick="{{ deletePin }}" hint-size="100px,50px">ลบหมุด</x-import>
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="secondary" size="lg" onClick="{{ closeSheet }}" hint-size="120px,50px">เสร็จสิ้น</x-import>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ pickerOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closePicker }}" style="position:absolute;inset:0;background:rgba(43,36,29,0.4);z-index:50"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;top:calc(env(safe-area-inset-top) + 40px);z-index:60;background:var(--surface-page);border-radius:28px 28px 0 0;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:10px 20px 14px;display:flex;flex-direction:column;gap:14px;background:var(--surface-card);border-bottom:1px solid var(--border-subtle)">
+          <span style="align-self:center;width:40px;height:5px;border-radius:3px;background:var(--border-default)"></span>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:22px;font-weight:700;color:var(--text-primary)">เลือกเส้นทาง</span>
+            <button onClick="{{ closePicker }}" style="width:44px;height:44px;border:none;border-radius:var(--radius-full);background:var(--surface-sunken);font-size:20px;color:var(--text-secondary);cursor:pointer">×</button>
+          </div>
+          <div style="background:var(--brand-secondary-tint);border-radius:var(--radius-md);padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:14px;font-weight:600;color:var(--brand-secondary-hover)">ตำแหน่งของคุณ · {{ gpsAccTxt }}</span>
+              <span style="font-size:13px;color:var(--text-secondary);font-variant-numeric:tabular-nums">{{ userCoord }} · ใกล้ที่สุด: {{ nearestTxt }}</span>
+            </div>
+            <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="secondary" size="md" onClick="{{ autoPick }}" hint-size="260px,44px">ให้ GPS เลือกเส้นทางที่ใกล้ที่สุด</x-import>
+          </div>
+          <x-import component-from-global-scope="SaralyDesignSystem_019e00.Input" placeholder="ค้นหาชื่อเส้นทาง อุทยาน หรือจังหวัด" value="{{ query }}" onChange="{{ setQuery }}" suffix="{{ querySuffix }}" hint-size="100%,44px"></x-import>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px 16px 34px;display:flex;flex-direction:column;gap:10px">
+          <button onClick="{{ pickGpx }}" style="text-align:left;font-family:var(--font-body);background:var(--surface-card);border:1.5px dashed var(--border-default);border-radius:var(--radius-md);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="background:var(--color-cream-50)">
+            <span style="flex:none;width:44px;height:44px;border-radius:var(--radius-full);background:var(--brand-primary-tint);color:var(--brand-primary);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center">+</span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:16px;font-weight:700;color:var(--text-primary)">นำเข้าไฟล์ GPX</span>
+              <span style="font-size:13px;color:var(--text-secondary);text-wrap:pretty">{{ gpxHint }}</span>
+            </div>
+          </button>
+          <input ref="{{ gpxRef }}" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" onChange="{{ onGpx }}" style="display:none">
+          <span style="font-size:13px;font-weight:600;color:var(--text-muted);padding:0 4px">{{ listLabel }}</span>
+          <sc-for list="{{ trailList }}" as="t" hint-placeholder-count="4">
+            <button onClick="{{ t.pick }}" style="text-align:left;font-family:var(--font-body);background:var(--surface-card);border:1.5px solid {{ t.bd }};border-radius:var(--radius-md);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="background:var(--color-cream-50)">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:16px;font-weight:700;color:var(--text-primary)">{{ t.name }}</span>
+                  <x-import component-from-global-scope="SaralyDesignSystem_019e00.Badge" tone="{{ t.tone }}" hint-size="60px,22px">{{ t.level }}</x-import>
+                  <sc-if value="{{ t.active }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:600;color:var(--brand-primary)">กำลังใช้</span></sc-if>
+                </div>
+                <span style="font-size:13px;color:var(--text-secondary)">{{ t.area }}</span>
+                <span style="font-size:13px;color:var(--text-secondary)">{{ t.len }} กม. · สูงสุด {{ t.max }} ม.</span>
+              </div>
+              <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                <span style="font-size:15px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ t.away }}</span>
+                <span style="font-size:12px;color:var(--text-muted)">จากคุณ</span>
+              </div>
+            </button>
+          </sc-for>
+          <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:32px 12px;text-align:center;font-size:15px;color:var(--text-secondary);line-height:1.6">ไม่พบเส้นทาง "{{ query }}"<br>ลองค้นด้วยชื่ออุทยานหรือจังหวัด</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ canRoutePin }}" hint-placeholder-val="{{ false }}">
+      <button onClick="{{ startPinMode }}" style="position:absolute;left:14px;bottom:{{ routePinBottom }};transition:{{ cTrans }};height:44px;padding:0 16px;border-radius:var(--radius-full);border:none;background:var(--brand-primary);box-shadow:var(--shadow-md);z-index:20;cursor:pointer;font-family:var(--font-body);font-size:15px;font-weight:600;color:#fff" style-hover="background:var(--brand-primary-hover)" style-active="transform:scale(0.97)">+ ปักบนเส้นทาง</button>
+    </sc-if>
+    <sc-if value="{{ pinMode }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:14px;right:14px;top:calc(env(safe-area-inset-top) + 92px);z-index:30;background:var(--surface-inverse);color:var(--text-inverse);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);padding:10px 10px 10px 16px;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:15px;font-weight:700">แตะบนเส้นทางเพื่อปักหมุด</span>
+          <span style="font-size:12px;color:var(--color-cream-300)">{{ pinModeSub }}</span>
+        </div>
+        <button onClick="{{ endPinMode }}" style="flex:none;height:44px;padding:0 18px;border:none;border-radius:var(--radius-full);background:var(--brand-primary);color:#fff;font-family:var(--font-body);font-size:15px;font-weight:600;cursor:pointer">เสร็จ</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showPinsBtn }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ openPins }}" style="position:absolute;left:14px;bottom:{{ pinsBtnBottom }};transition:{{ cTrans }};height:48px;padding:0 16px 0 12px;border-radius:var(--radius-full);border:1px solid var(--border-subtle);background:var(--surface-card);box-shadow:var(--shadow-md);z-index:20;cursor:pointer;display:flex;align-items:center;gap:8px;font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--text-primary)" style-hover="background:var(--color-cream-100)">
+        <span style="min-width:26px;height:26px;padding:0 6px;box-sizing:border-box;border-radius:var(--radius-full);background:var(--brand-primary);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ pinCount }}</span>หมุดทั้งหมด
+      </button>
+    </sc-if>
+
+    <sc-if value="{{ pinsOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:64;background:var(--surface-page);display:flex;flex-direction:column">
+        <div style="flex:none;padding:calc(env(safe-area-inset-top) + 16px) 18px 12px;display:flex;flex-direction:column;gap:12px;background:var(--surface-page)">
+          <button onClick="{{ closePins }}" style="align-self:flex-start;height:44px;border:none;background:none;padding:0;font-family:var(--font-body);font-size:16px;font-weight:600;color:var(--brand-primary);cursor:pointer">‹ แผนที่</button>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:28px;font-weight:700;color:var(--text-primary)">หมุดทั้งหมด</span>
+            <span style="font-size:14px;color:var(--text-secondary)">{{ pinsSub }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:var(--radius-full);background:var(--surface-sunken)">
+            <button onClick="{{ scopeTrail }}" style="height:40px;border:none;border-radius:var(--radius-full);background:{{ scopeTrailBg }};box-shadow:{{ scopeTrailSh }};font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--text-primary);cursor:pointer">เส้นทางนี้</button>
+            <button onClick="{{ scopeAll }}" style="height:40px;border:none;border-radius:var(--radius-full);background:{{ scopeAllBg }};box-shadow:{{ scopeAllSh }};font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--text-primary);cursor:pointer">ทุกทริป</button>
+          </div>
+          <div style="display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:0 18px 2px">
+            <sc-for list="{{ pinFilters }}" as="f" hint-placeholder-count="6">
+              <button onClick="{{ f.pick }}" style="flex:none;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:var(--radius-full);border:1.5px solid {{ f.bd }};background:{{ f.bg }};font-family:var(--font-body);font-size:14px;font-weight:600;color:var(--text-primary);cursor:pointer;white-space:nowrap"><span style="width:9px;height:9px;border-radius:50%;background:{{ f.color }}"></span>{{ f.label }} <span style="color:var(--text-muted);font-weight:500">{{ f.count }}</span></button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:4px 18px 34px;display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ pinRows }}" as="r" hint-placeholder-count="3">
+            <button onClick="{{ r.open }}" style="text-align:left;font-family:var(--font-body);background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="background:var(--color-cream-50)">
+              <div style="flex:none;width:60px;height:60px;border-radius:var(--radius-md);overflow:hidden;background:{{ r.tint }};border:2px solid {{ r.color }};box-sizing:border-box;display:flex;align-items:center;justify-content:center">
+                <sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{ r.src }}" alt="รูปที่หมุด" style="width:100%;height:100%;object-fit:cover;display:block"></sc-if>
+                <sc-if value="{{ r.noPhoto }}" hint-placeholder-val="{{ true }}"><span style="width:14px;height:14px;border-radius:50%;background:{{ r.color }}"></span></sc-if>
+              </div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:16px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.title }}</span>
+                <span style="font-size:13px;color:var(--text-secondary)">{{ r.label }} · {{ r.ele }} ม. · {{ r.at }}</span>
+                <span style="font-size:13px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.where }}</span>
+              </div>
+              <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                <span style="font-size:15px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ r.away }}</span>
+                <span style="font-size:12px;color:var(--text-muted)">{{ r.awayLabel }}</span>
+              </div>
+            </button>
+          </sc-for>
+          <sc-if value="{{ pinsEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:40px 12px;text-align:center;font-size:15px;line-height:1.6;color:var(--text-secondary)">{{ pinsEmptyTxt }}</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ histOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:64;background:var(--surface-page);overflow-y:auto;padding:calc(env(safe-area-inset-top) + 16px) 18px 34px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+        <button onClick="{{ closeHistory }}" style="align-self:flex-start;height:44px;border:none;background:none;padding:0;font-family:var(--font-body);font-size:16px;font-weight:600;color:var(--brand-primary);cursor:pointer">‹ แผนที่</button>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:28px;font-weight:700;color:var(--text-primary)">ประวัติทริป</span>
+          <span style="font-size:14px;color:var(--text-secondary)">{{ histTotal }}</span>
+        </div>
+        <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:12px">
+          <span style="flex:none;width:10px;height:10px;border-radius:50%;background:{{ syncDot }}"></span>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:14px;font-weight:600;color:var(--text-primary)">{{ syncTitle }}</span>
+            <span style="font-size:13px;color:var(--text-secondary);text-wrap:pretty">{{ syncSub }}</span>
+          </div>
+          <button onClick="{{ syncNowBtn }}" style="flex:none;height:36px;padding:0 12px;border-radius:var(--radius-full);border:1px solid var(--border-default);background:var(--surface-card);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--text-primary);cursor:pointer" style-hover="background:var(--color-cream-100)">ซิงก์ตอนนี้</button>
+        </div>
+        <sc-for list="{{ histList }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.open }}" style="text-align:left;font-family:var(--font-body);background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:14px;display:flex;gap:14px;align-items:center;cursor:pointer" style-hover="background:var(--color-cream-50)">
+            <div style="flex:none;width:76px;height:76px;border-radius:var(--radius-md);background:var(--surface-sunken)">
+              <svg viewBox="0 0 300 150" style="width:76px;height:76px;display:block" preserveAspectRatio="xMidYMid meet">
+                <polyline points="{{ t.plan }}" fill="none" stroke="var(--border-default)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                <polyline points="{{ t.track }}" fill="none" stroke="var(--brand-primary)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              </svg>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+                <span style="font-size:17px;font-weight:700;color:var(--text-primary)">{{ t.name }}</span>
+                <span style="flex:none;font-size:12px;color:var(--text-muted)">{{ t.date }}</span>
+              </div>
+              <span style="font-size:13px;color:var(--text-secondary)">{{ t.status }} · {{ t.pinCount }} หมุด</span>
+              <div style="display:flex;gap:14px;font-size:13px;color:var(--text-secondary);font-variant-numeric:tabular-nums">
+                <span><b style="color:var(--text-primary);font-size:15px">{{ t.dist }}</b> กม.</span>
+                <span><b style="color:var(--text-primary);font-size:15px">{{ t.time }}</b></span>
+                <span>ขึ้น <b style="color:var(--text-primary);font-size:15px">{{ t.gain }}</b> ม.</span>
+              </div>
+            </div>
+          </button>
+        </sc-for>
+        <div style="margin-top:10px;padding-top:18px;border-top:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:8px">
+          <button onClick="{{ askReset }}" style="height:48px;border-radius:var(--radius-full);border:1.5px solid var(--semantic-danger);background:var(--surface-card);font-family:var(--font-body);font-size:15px;font-weight:600;color:var(--semantic-danger);cursor:pointer" style-hover="background:var(--semantic-danger-tint)">ล้างข้อมูลกลับเป็นค่าเริ่มต้น</button>
+          <span style="font-size:13px;line-height:1.5;color:var(--text-muted);text-align:center;text-wrap:pretty">ลบหมุด รูป ประวัติทริป แผนที่ออฟไลน์ และไฟล์ GPX ที่นำเข้าทั้งหมดในเครื่องนี้</span>
+          <span style="font-size:12px;color:var(--text-muted);text-align:center">ปักทาง เวอร์ชัน 1.0</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sumOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:65;background:var(--surface-page);display:flex;flex-direction:column">
+        <div style="flex:1;overflow-y:auto;padding:calc(env(safe-area-inset-top) + 16px) 18px 20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+            <x-import component-from-global-scope="SaralyDesignSystem_019e00.Badge" tone="success" hint-size="90px,22px">{{ sm.status }}</x-import>
+            <span style="font-size:26px;font-weight:700;color:var(--text-primary);text-wrap:pretty">{{ sm.name }}</span>
+            <span style="font-size:14px;color:var(--text-secondary)">{{ sm.area }} · {{ sm.date }}</span>
+          </div>
+          <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:16px;display:flex;flex-direction:column;gap:8px">
+            <svg viewBox="0 0 300 150" style="width:100%;height:150px;display:block">
+              <polyline points="{{ sm.planShape }}" fill="none" stroke="var(--border-default)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              <polyline points="{{ sm.trackShape }}" fill="none" stroke="var(--brand-primary)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              <sc-for list="{{ sm.pinDots }}" as="d" hint-placeholder-count="2">
+                <circle cx="{{ d.x }}" cy="{{ d.y }}" r="6" fill="{{ d.color }}" stroke="#fff" stroke-width="2"></circle>
+              </sc-for>
+              <circle cx="{{ sm.startX }}" cy="{{ sm.startY }}" r="5" fill="var(--brand-secondary)" stroke="#fff" stroke-width="2"></circle>
+            </svg>
+            <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted)">
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:var(--brand-primary)"></span>ที่เดินจริง</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:var(--border-default)"></span>เส้นทางทั้งหมด</span>
+              <span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--brand-secondary)"></span>จุดเริ่ม</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+            <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;color:var(--text-muted)">ระยะทาง</span><span style="font-size:24px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ sm.dist }} <span style="font-size:14px;font-weight:500">กม.</span></span><span style="font-size:12px;color:var(--text-secondary)">{{ sm.pct }} ของเส้นทาง</span></div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;color:var(--text-muted)">เวลาเดิน</span><span style="font-size:24px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ sm.time }}</span><span style="font-size:12px;color:var(--text-secondary)">เฉลี่ย {{ sm.pace }} นาที/กม.</span></div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;color:var(--text-muted)">ความสูงสะสม</span><span style="font-size:24px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ sm.gain }} <span style="font-size:14px;font-weight:500">ม.</span></span><span style="font-size:12px;color:var(--text-secondary)">ลง {{ sm.loss }} ม.</span></div>
+            <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:14px 16px;display:flex;flex-direction:column;gap:2px"><span style="font-size:13px;color:var(--text-muted)">จุดสูงสุด</span><span style="font-size:24px;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums">{{ sm.max }} <span style="font-size:14px;font-weight:500">ม.</span></span><span style="font-size:12px;color:var(--text-secondary)">ต่ำสุด {{ sm.min }} ม.</span></div>
+          </div>
+          <div style="background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:16px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:15px;font-weight:600;color:var(--text-primary)">ระดับความสูง</span>
+            <svg viewBox="0 0 300 70" preserveAspectRatio="none" style="width:100%;height:70px;display:block">
+              <polygon points="{{ sm.area2 }}" fill="var(--brand-secondary-tint)"></polygon>
+              <polyline points="{{ sm.line }}" fill="none" stroke="var(--brand-secondary)" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+            </svg>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>0 กม.</span><span>{{ sm.dist }} กม.</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span style="font-size:15px;font-weight:600;color:var(--text-primary)">หมุดระหว่างทาง ({{ sm.pinCount }})</span>
+              <sc-if value="{{ sm.canPin }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ sm.pinOnRoute }}" style="flex:none;height:36px;padding:0 14px;border-radius:var(--radius-full);border:1px solid var(--brand-primary);background:var(--brand-primary-tint);font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--brand-primary-hover);cursor:pointer">+ ปักบนเส้นทาง</button>
+              </sc-if>
+            </div>
+            <sc-for list="{{ sm.pins }}" as="p" hint-placeholder-count="2">
+              <button onClick="{{ p.open }}" style="text-align:left;font-family:var(--font-body);background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer" style-hover="background:var(--color-cream-50)">
+                <span style="width:12px;height:12px;border-radius:50%;flex:none;background:{{ p.color }}"></span>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:15px;font-weight:600;color:var(--text-primary)">{{ p.title }}</span>
+                  <span style="font-size:13px;color:var(--text-secondary)">{{ p.label }} · {{ p.ele }} ม. · {{ p.at }}</span>
+                </div>
+                <sc-if value="{{ p.photo }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--text-muted)">มีรูป</span></sc-if>
+              </button>
+            </sc-for>
+            <sc-if value="{{ sm.noPins }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:var(--text-secondary)">ทริปนี้ยังไม่มีหมุด</span></sc-if>
+          </div>
+        </div>
+        <div style="flex:none;background:var(--surface-card);border-top:1px solid var(--border-subtle);padding:14px 18px 34px;display:flex;gap:10px;justify-content:space-between">
+          <sc-if value="{{ sm.isLive }}" hint-placeholder-val="{{ true }}">
+            <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="outline" size="lg" onClick="{{ resumeRec }}" hint-size="120px,50px">{{ sm.resumeLabel }}</x-import>
+            <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="primary" size="lg" onClick="{{ finishTrip }}" hint-size="160px,50px">บันทึกและปิด</x-import>
+          </sc-if>
+          <sc-if value="{{ sm.isPast }}" hint-placeholder-val="{{ false }}">
+            <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="ghost" size="lg" onClick="{{ closeTrip }}" hint-size="100px,50px">‹ ประวัติ</x-import>
+            <x-import component-from-global-scope="SaralyDesignSystem_019e00.Button" variant="secondary" size="lg" onClick="{{ walkAgain }}" hint-size="180px,50px">เดินเส้นทางนี้อีกครั้ง</x-import>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ viewerOpen }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeViewer }}" style="position:absolute;inset:0;z-index:90;background:var(--color-warm-gray-900);display:flex;flex-direction:column">
+        <div onClick="{{ stopProp }}" style="flex:none;padding:56px 14px 12px 20px;display:flex;align-items:center;gap:12px;color:var(--text-inverse)">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:17px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ viewerTitle }}</span>
+            <span style="font-size:13px;color:var(--color-cream-300)">{{ viewerMeta }}</span>
+          </div>
+          <button onClick="{{ closeViewer }}" aria-label="ปิดภาพ" style="flex:none;width:44px;height:44px;border-radius:var(--radius-full);border:none;background:var(--color-warm-gray-700);color:#fff;font-size:22px;line-height:1;cursor:pointer;padding:0" style-hover="background:var(--color-warm-gray-600)">×</button>
+        </div>
+        <div style="flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0 12px">
+          <img onClick="{{ stopProp }}" src="{{ viewerSrc }}" alt="รูปที่หมุด" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:var(--radius-md);display:block">
+        </div>
+        <div onClick="{{ stopProp }}" style="flex:none;padding:16px 20px 34px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;color:var(--text-inverse)">
+          <sc-if value="{{ viewerMulti }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <button onClick="{{ viewerPrev }}" style="width:56px;height:44px;border-radius:var(--radius-full);border:none;background:var(--color-warm-gray-700);color:#fff;font-family:var(--font-body);font-size:20px;cursor:pointer">‹</button>
+            <span style="font-size:15px;font-weight:600;font-variant-numeric:tabular-nums">{{ viewerCount }}</span>
+            <button onClick="{{ viewerNext }}" style="width:56px;height:44px;border-radius:var(--radius-full);border:none;background:var(--color-warm-gray-700);color:#fff;font-family:var(--font-body);font-size:20px;cursor:pointer">›</button>
+          </div>
+          </sc-if>
+          <button onClick="{{ viewerDetails }}" style="height:48px;border-radius:var(--radius-full);border:none;background:var(--surface-card);color:var(--text-primary);font-family:var(--font-body);font-size:16px;font-weight:600;cursor:pointer" style-hover="background:var(--color-cream-100)">ดูรายละเอียดหมุด</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;top:{{ toastTop }};left:16px;right:16px;z-index:70;background:var(--surface-inverse);color:var(--text-inverse);border-radius:var(--radius-md);padding:8px 8px 8px 16px;min-height:48px;box-sizing:border-box;font-size:15px;font-weight:500;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px">
+        <span style="flex:1;min-width:0">{{ toast.text }}</span>
+        <sc-if value="{{ toast.hasAction }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ toastAction }}" style="flex:none;height:36px;padding:0 14px;border:none;border-radius:var(--radius-full);background:var(--brand-primary);color:#fff;font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer">{{ toast.actionLabel }}</button>
+        </sc-if>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;simSpeed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0.5,&quot;max&quot;:4,&quot;step&quot;:0.5,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  TYPES = {
+    start: { label: 'จุดเริ่มต้น', color: '#168A57', tint: '#CDF0DE' },
+    summit: { label: 'จุดสูงสุด', color: '#7A4E2D', tint: '#F1E6DC' },
+    view: { label: 'จุดชมวิว', color: '#F07A2E', tint: '#FEEFE4' },
+    water: { label: 'แหล่งน้ำ', color: '#1A8FE3', tint: '#E4F2FD' },
+    camp: { label: 'ที่ตั้งแคมป์', color: '#1FAE6E', tint: '#E2F7EC' },
+    rest: { label: 'จุดพัก', color: '#E0A526', tint: '#FCF3E2' },
+    danger: { label: 'จุดอันตราย', color: '#D14343', tint: '#FBEAE9' },
+  };
+  LEVEL = { easy: ['ง่าย', 'success'], mid: ['ปานกลาง', 'warning'], hard: ['ยาก', 'danger'] };
+  TRAILS = [
+    { id: 'kmp', name: 'กิ่วแม่ปาน', area: 'อช.ดอยอินทนนท์ · เชียงใหม่', c: [18.5556, 98.4834], ry: 0.0042, rx: 0.005, base: 2180, amp: 160, level: 'mid', tags: 'inthanon doi' },
+    { id: 'angka', name: 'อ่างกาหลวง', area: 'อช.ดอยอินทนนท์ · เชียงใหม่', c: [18.5885, 98.4862], ry: 0.0011, rx: 0.0013, base: 2535, amp: 18, level: 'easy', tags: 'inthanon' },
+    { id: 'pdc', name: 'ผาดอกเสี้ยว', area: 'อช.ดอยอินทนนท์ · เชียงใหม่', c: [18.533, 98.506], ry: 0.0035, rx: 0.004, base: 1680, amp: 220, level: 'mid', tags: 'inthanon waterfall น้ำตก' },
+    { id: 'cd', name: 'ดอยหลวงเชียงดาว', area: 'เขตรักษาพันธุ์สัตว์ป่าเชียงดาว · เชียงใหม่', c: [19.395, 98.885], ry: 0.012, rx: 0.01, base: 1200, amp: 960, level: 'hard', tags: 'chiang dao' },
+    { id: 'mj', name: 'ม่อนจอง', area: 'เขตรักษาพันธุ์สัตว์ป่าอมก๋อย · เชียงใหม่', c: [17.43, 98.48], ry: 0.007, rx: 0.006, base: 1500, amp: 420, level: 'mid', tags: 'omkoi' },
+    { id: 'kt_full', realLen: 7.72, realMax: 1368, name: 'ขุนตาน เต็มเส้นทาง (สถานี → ย.4)', area: 'อช.ดอยขุนตาน · ลำปาง-ลำพูน · GPX จริง', level: 'hard', tags: 'doi khun tan khuntan ขุนตาล ขุนตาน ลำปาง ลำพูน gpx', pts: [[18.499789,99.265358,588],[18.499,99.26555,598],[18.498202,99.265446,621],[18.497497,99.265601,631],[18.497269,99.265989,651],[18.498023,99.266205,649],[18.498432,99.266967,653],[18.498262,99.267784,664],[18.497476,99.267713,684],[18.49717,99.267118,689],[18.496526,99.26765,706],[18.495994,99.268318,717],[18.495321,99.268769,717],[18.495464,99.269622,713],[18.495706,99.270484,720],[18.49586,99.271371,730],[18.496362,99.272063,743],[18.496234,99.272955,760],[18.496481,99.2736,778],[18.497133,99.27392,797],[18.49789,99.274389,807],[18.498094,99.274707,818],[18.498057,99.274832,821],[18.49797,99.274969,824],[18.497761,99.275262,826],[18.498344,99.275805,837],[18.497756,99.276356,845],[18.498063,99.277065,864],[18.498594,99.277562,875],[18.498427,99.278347,894],[18.498836,99.278919,909],[18.4994,99.27952,927],[18.499792,99.280196,935],[18.500362,99.28082,954],[18.500747,99.281481,960],[18.500545,99.282318,963],[18.500113,99.283092,969],[18.499621,99.283817,984],[18.498906,99.284278,999],[18.498695,99.283545,994],[18.49804,99.284007,1010],[18.497492,99.284627,1030],[18.497266,99.285346,1036],[18.496757,99.286079,1046],[18.496035,99.286346,1067],[18.496052,99.286849,1069],[18.496427,99.287567,1061],[18.496083,99.288045,1067],[18.495366,99.288226,1077],[18.494566,99.288186,1084],[18.4939,99.288533,1090],[18.49313,99.288403,1101],[18.492378,99.288574,1108],[18.492276,99.289434,1110],[18.491903,99.290249,1116],[18.491439,99.290985,1113],[18.491653,99.291819,1122],[18.491178,99.292528,1124],[18.490459,99.292977,1125],[18.490413,99.293873,1127],[18.490998,99.294367,1140],[18.491347,99.295217,1153],[18.49146,99.296106,1160],[18.490864,99.296714,1182],[18.49054,99.297355,1198],[18.49127,99.297719,1196],[18.491629,99.298455,1213],[18.492192,99.298997,1225],[18.492418,99.299647,1234],[18.492609,99.300187,1237],[18.492488,99.301095,1264],[18.493251,99.301298,1266],[18.493999,99.301711,1280],[18.494605,99.302377,1286],[18.495185,99.302652,1286],[18.494329,99.302814,1306],[18.493521,99.302721,1322],[18.492659,99.302802,1338],[18.491816,99.302855,1355],[18.491015,99.3029,1367]] },
+    { id: 'phataek', realLen: 7.01, realMax: 478, name: 'น้ำตกผาแตก (วันที่ 1)', area: 'จุดเริ่มเดิน → แคมป์ริมน้ำ · ทองผาภูมิ กาญจนบุรี · GPX จริง', level: 'mid', tags: 'pha taek phataek ผาแตก น้ำตก ทองผาภูมิ กาญจนบุรี kanchanaburi gpx', pts: [[14.977038,98.681742,463],[14.977733,98.681502,459],[14.978512,98.681444,455],[14.979225,98.681152,455],[14.979903,98.680793,452],[14.980631,98.680686,458],[14.981362,98.680809,453],[14.982012,98.680889,444],[14.982671,98.681155,452],[14.98332,98.681427,459],[14.983966,98.681613,462],[14.984663,98.681839,469],[14.985287,98.682227,474],[14.985703,98.68285,474],[14.985862,98.683534,467],[14.986515,98.683746,468],[14.987245,98.683827,459],[14.987861,98.684005,448],[14.988553,98.684101,443],[14.989233,98.684206,449],[14.989998,98.68422,448],[14.990714,98.684047,452],[14.991291,98.683609,442],[14.991613,98.683001,426],[14.991983,98.682436,409],[14.992466,98.681977,408],[14.992939,98.681468,408],[14.993618,98.681166,407],[14.994247,98.680888,404],[14.994878,98.680592,405],[14.995549,98.680784,404],[14.996251,98.680898,404],[14.996903,98.680938,405],[14.997553,98.680666,404],[14.998257,98.680736,403],[14.998943,98.680929,402],[14.999589,98.681252,402],[15.000274,98.681211,401],[15.000967,98.681251,402],[15.001608,98.681347,400],[15.002183,98.681775,399],[15.002863,98.681976,396],[15.003579,98.68201,394],[15.003978,98.682406,395],[15.00456,98.682328,395],[15.005244,98.682504,397],[15.005929,98.682666,398],[15.006542,98.682516,395],[15.007203,98.682632,395],[15.007895,98.682695,396],[15.008575,98.682686,391],[15.009221,98.683042,392],[15.009913,98.683173,394],[15.010593,98.68336,397],[15.011292,98.683568,396],[15.012035,98.683688,393],[15.01262,98.683333,387],[15.013274,98.683194,388],[15.01386,98.68278,388],[15.014466,98.683153,388],[15.015144,98.683337,389],[15.015884,98.683315,384],[15.016412,98.682907,381],[15.016981,98.682507,383],[15.017633,98.682218,385],[15.018262,98.682246,386],[15.018813,98.682349,379],[15.019345,98.682158,377],[15.019909,98.681784,385],[15.020637,98.681734,384],[15.021361,98.681723,378],[15.021982,98.681867,376],[15.022583,98.681525,377],[15.023094,98.681097,376],[15.023448,98.680474,371],[15.023899,98.679947,370],[15.024443,98.679575,372],[15.025046,98.679225,374],[15.025757,98.679289,381],[15.026357,98.679554,369]] },
+    { id: 'kl1800', name: 'ยอดเขาหลวง · ยอด 1,800', area: 'อช.เขาหลวง · นครศรีธรรมราช', c: [8.5, 99.733], ry: 0.022, rx: 0.015, base: 440, amp: 1330, level: 'hard', tags: 'khao luang nakhon คีรีวง นครศรี ภาคใต้ 1800' },
+    { id: 'pkd', name: 'ภูกระดึง', area: 'อช.ภูกระดึง · เลย', c: [16.86, 101.83], ry: 0.02, rx: 0.012, base: 300, amp: 950, level: 'hard', tags: 'loei phu kradueng' },
+  ];
+  USER = [18.5505, 98.4841];
+  mapRef = React.createRef();
+  fileRef = React.createRef();
+  gpxRef = React.createRef();
+  importGpx(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      const doc = new DOMParser().parseFromString(r.result, 'application/xml');
+      const segs = [...doc.getElementsByTagName('trkseg')];
+      const groups = segs.length ? segs.map(sg => [...sg.getElementsByTagName('trkpt')]) : [[...doc.getElementsByTagName('rtept')]];
+      let hasEle = false;
+      const all = [], brk = new Set();
+      groups.forEach(g => {
+        let first = true;
+        g.forEach(n => {
+          const e = n.getElementsByTagName('ele')[0], tE = n.getElementsByTagName('time')[0], p = [+n.getAttribute('lat'), +n.getAttribute('lon'), e ? Math.round(+e.textContent) : 0, tE ? (Date.parse(tE.textContent) || 0) : 0];
+          if (!isFinite(p[0]) || !isFinite(p[1]) || (!p[0] && !p[1])) return;
+          if (e) hasEle = true;
+          if (first && all.length) brk.add(all.length);
+          first = false; all.push(p);
+        });
+      });
+      if (all.length < 2) { this.showToast('ไฟล์นี้ไม่มีจุดเส้นทาง กรุณาเลือกไฟล์ GPX ที่บันทึกจากการเดิน'); return; }
+      let len = 0, gain = 0, maxE = -Infinity;
+      for (let i = 0; i < all.length; i++) {
+        if (all[i][2] > maxE) maxE = all[i][2];
+        if (!i || brk.has(i)) continue;
+        len += this.hav(all[i - 1], all[i]); const d = all[i][2] - all[i - 1][2]; if (d > 0) gain += d;
+      }
+      const step = Math.max(1, Math.ceil(all.length / 300));
+      const pts = all.filter((_, i) => i % step === 0); if (pts[pts.length - 1] !== all[all.length - 1]) pts.push(all[all.length - 1]);
+      const nm = doc.querySelector('trk > name, rte > name, metadata > name');
+      const name = (nm && nm.textContent.trim()) || file.name.replace(/\.gpx$/i, '');
+      const t = { id: 'gpx' + Date.now(), realLen: len, realMax: maxE, name, area: 'นำเข้าจากไฟล์ · ' + file.name, level: gain < 300 ? 'easy' : gain < 800 ? 'mid' : 'hard', tags: 'gpx นำเข้า ' + file.name, pts };
+      this.TRAILS.push(t); this.geo[t.id] = this.build(t);
+      const tA = all.find(p => p[3])?.[3] || 0, tB = [...all].reverse().find(p => p[3])?.[3] || 0, timed = tA && tB > tA;
+      const near = (la, lo) => { let k = 0, b = Infinity; all.forEach((q, i) => { const d = (q[0] - la) ** 2 + (q[1] - lo) ** 2; if (d < b) { b = d; k = i; } }); return all[k]; };
+      const p2 = n => String(n).padStart(2, '0'), hm = ms => { const d = new Date(ms); return p2(d.getHours()) + ':' + p2(d.getMinutes()); };
+      const guess = s => { s = (s || '').toLowerCase(); return /น้ำตก|น้ำ|water|spring|stream/.test(s) ? 'water' : /แคมป์|camp|tent|เต็นท์/.test(s) ? 'camp' : /ยอด|summit|peak|top/.test(s) ? 'summit' : /เริ่ม|start|trailhead/.test(s) ? 'start' : /พัก|rest|shelter|ศาลา/.test(s) ? 'rest' : /อันตราย|danger|warning|ระวัง/.test(s) ? 'danger' : 'view'; };
+      const wpts = [...doc.getElementsByTagName('wpt')].map((w, i) => {
+        const la = +w.getAttribute('lat'), lo = +w.getAttribute('lon'); if (!isFinite(la) || !isFinite(lo)) return null;
+        const g = q => (w.getElementsByTagName(q)[0] || {}).textContent || '', nq = near(la, lo), wt = Date.parse(g('time')) || nq[3];
+        return { id: Date.now() + i + 1, trail: t.id, type: guess(g('name') + ' ' + g('sym') + ' ' + g('type')), note: (g('name') + (g('desc') ? ' · ' + g('desc') : '')).trim(), lat: la, lng: lo, ele: g('ele') ? Math.round(+g('ele')) : nq[2], at: wt ? hm(wt) : '–', photos: [] };
+      }).filter(Boolean);
+      let rec = null;
+      if (timed) {
+        const st2 = Math.max(1, Math.ceil(all.length / 1500));
+        const trk = all.filter((_, i) => i % st2 === 0 || i === all.length - 1).map(p => [+p[0].toFixed(6), +p[1].toFixed(6), p[2], p[3]]);
+        rec = { id: 'h' + Date.now(), trailId: t.id, idx: pts.length - 1, elapsed: Math.round((tB - tA) / 1000), date: this.thDate(new Date(tA)), pins: [], trk, dist: len, gain: Math.round(gain), fromGpx: true };
+      }
+      this.setState(st => ({ gps: 'found', picker: false, query: '', pins: wpts.length ? [...st.pins, ...wpts] : st.pins, history: rec ? [rec, ...st.history] : st.history }), () => this.save());
+      this.selectTrail(t.id, true);
+      this.gpxInfo = { timed, wp: wpts.length, dur: timed ? this.fmt(Math.round((tB - tA) / 1000)) : '' };
+      this.showToast('นำเข้า ' + name + ' แล้ว · ' + len.toFixed(1) + ' กม.' + (this.gpxInfo.timed ? ' · ' + this.gpxInfo.dur + ' ชม.' : '') + (this.gpxInfo.wp ? ' · หมุดจากไฟล์ ' + this.gpxInfo.wp : '') + (hasEle ? '' : ' · ไฟล์ไม่มีข้อมูลความสูง'), 'ปักหมุดเพิ่ม', () => this.setState({ pinMode: true, toast: null }));
+    };
+    r.onerror = () => this.showToast('อ่านไฟล์ไม่สำเร็จ กรุณาลองใหม่');
+    r.readAsText(file);
+  }
+  shrink(file) {
+    return new Promise(res => {
+      const r = new FileReader();
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, 640 / Math.max(img.width, img.height));
+          const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/jpeg', 0.82));
+        };
+        img.onerror = () => res(r.result);
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    });
+  }
+  build(t) {
+    if (t.pts) {
+      const route = t.pts.map(q => [q[0], q[1]]), eles = t.pts.map(q => q[2]);
+      const raw = route.reduce((acc, p, i) => { acc.push(i ? acc[i - 1] + this.hav(route[i - 1], p) : 0); return acc; }, []);
+      const k = t.realLen ? t.realLen / (raw[raw.length - 1] || 1) : 1, cum = raw.map(d => d * k);
+      return { route, eles, cum, len: cum[cum.length - 1], max: t.realMax || Math.max(...eles) };
+    }
+    const n = 48;
+    const route = Array.from({ length: n + 1 }, (_, i) => {
+      const a = (i / n) * Math.PI * 2 - Math.PI / 2;
+      return [t.c[0] + t.ry * Math.sin(a) + t.ry * 0.1 * Math.sin(i * 1.7), t.c[1] + t.rx * Math.cos(a) + t.rx * 0.08 * Math.cos(i * 1.3)];
+    });
+    const eles = route.map((_, i) => Math.round(t.base + t.amp * Math.sin((i / n) * Math.PI) + t.amp * 0.09 * Math.sin(i * 1.3)));
+    const cum = route.reduce((acc, p, i) => { acc.push(i ? acc[i - 1] + this.hav(route[i - 1], p) : 0); return acc; }, []);
+    return { route, eles, cum, len: cum[n], max: Math.max(...eles) };
+  }
+  geo = Object.fromEntries(this.TRAILS.map(t => [t.id, this.build(t)]));
+  seed() { return { pins: [], history: [], off: {} }; }
+  seedDemo() {
+    const g = this.geo.kmp, r = g.route, e = g.eles, gc = this.geo.cd.route, gp = this.geo.pdc.route;
+    const hist = [
+      { id: 'h1', trailId: 'pdc', idx: 31, elapsed: 7420, date: '19 ต.ค. 2569', pins: [{ id: 91, type: 'water', note: 'น้ำตกผาดอกเสี้ยว ชั้น 3', lat: gp[14][0], lng: gp[14][1], ele: this.geo.pdc.eles[14], at: '09:12', photos: [] }] },
+      { id: 'h2', trailId: 'cd', idx: 48, elapsed: 18760, date: '12 ต.ค. 2569', pins: [{ id: 92, type: 'camp', note: 'ลานกางเต็นท์อ่างสลุง', lat: gc[16][0], lng: gc[16][1], ele: this.geo.cd.eles[16], at: '14:20', photos: [] }, { id: 93, type: 'view', note: 'ยอดดอยหลวง', lat: gc[24][0], lng: gc[24][1], ele: this.geo.cd.eles[24], at: '06:05', photos: [] }, { id: 94, type: 'danger', note: 'ช่วงหินร่วง ระวังลื่น', lat: gc[31][0], lng: gc[31][1], ele: this.geo.cd.eles[31], at: '11:48', photos: [] }] },
+    ];
+    return {
+      history: hist,
+      pins: [
+        { id: 1, trail: 'kmp', type: 'water', note: 'ลำธารต้นน้ำ เติมน้ำได้', lat: r[9][0], lng: r[9][1], ele: e[9], at: '07:42', photos: [] },
+        { id: 2, trail: 'kmp', type: 'view', note: 'ผาแง่มน วิวทะเลหมอก', lat: r[24][0], lng: r[24][1], ele: e[24], at: '08:31', photos: [] },
+      ],
+      off: {},
+    };
+  }
+  useTrail(id) { const g = this.geo[id]; this.route = g.route; this.eles = g.eles; this.cum = g.cum; }
+  constructor(p) {
+    super(p);
+    this.useTrail('kmp');
+    const seed = this.seed();
+    this.state = {
+      ...seed, trailId: 'kmp', gps: 'searching', picker: false, query: '',
+      cH: 340, dragging: false, viewer: null, pinsOpen: false, pinScope: 'trail', pinFilter: 'all', rec: false, summary: false, histOpen: false, viewTrip: null, idx: 0, elapsed: 0, selId: null, toast: null, offLoading: null, offPct: 0, lastId: null,
+    };
+    this._sp = this.state.pins; this._sh = this.state.history; this._so = this.state.off;
+    this.pt = setInterval(() => this.persist(), 1000);
+  }
+  hav(a, b) {
+    const R = 6371, t = x => x * Math.PI / 180;
+    const dLa = t(b[0] - a[0]), dLo = t(b[1] - a[1]);
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(t(a[0])) * Math.cos(t(b[0])) * Math.sin(dLo / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  distTxt(d) { return d < 1 ? Math.round(d * 1000) + ' ม.' : d < 20 ? d.toFixed(1) + ' กม.' : Math.round(d).toLocaleString() + ' กม.'; }
+  thDate(dd) { const d = dd || new Date(); return d.getDate() + ' ' + ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][d.getMonth()] + ' ' + (d.getFullYear() + 543); }
+  fmt(s) { const p = n => String(n).padStart(2, '0'); return Math.floor(s / 3600) + ':' + p(Math.floor(s / 60) % 60) + ':' + p(s % 60); }
+  me() { return this.realMode ? this.USER : this.state.gps === 'found' ? this.route[this.state.idx] : this.USER; }
+  trail() { return this.TRAILS.find(t => t.id === this.state.trailId); }
+  awayFromUser(t) { const r = this.geo[t.id].route; return Math.min(...r.map(p => this.hav(this.USER, p))); }
+  nearest() { return [...this.TRAILS].sort((a, b) => this.awayFromUser(a) - this.awayFromUser(b))[0]; }
+  layout() { return 'c'; }
+  LAYERS = {
+    topo: { label: 'ภูมิประเทศ', desc: 'เส้นชั้นความสูง ทางเดิน', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', max: 17, attr: '© OpenStreetMap · © OpenTopoMap (CC-BY-SA)' },
+    sat: { label: 'ดาวเทียม', desc: 'ภาพถ่ายจริง เห็นป่าและลานโล่ง', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', max: 18, attr: '© Esri, Maxar, Earthstar Geographics', labels: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}' },
+    std: { label: 'ถนน', desc: 'ถนน ชื่อสถานที่ เดินทางไปจุดเริ่ม', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', max: 19, attr: '© OpenStreetMap' },
+  };
+  base() { return this.LAYERS[this.state.base] ? this.state.base : 'topo'; }
+  tileUrl() { return this.LAYERS[this.base()].url; }
+  applyBase() {
+    const L = window.L, Ly = this.LAYERS[this.base()];
+    if (this.tiles) this.map.removeLayer(this.tiles);
+    if (this.labels) { this.map.removeLayer(this.labels); this.labels = null; }
+    this.tiles = L.tileLayer(Ly.url, { maxZoom: Ly.max, maxNativeZoom: Ly.max, subdomains: 'abc', attribution: Ly.attr }).addTo(this.map);
+    this.tiles.bringToBack();
+    if (Ly.labels) this.labels = L.tileLayer(Ly.labels, { maxZoom: Ly.max, attribution: '' }).addTo(this.map);
+    this.map.setMaxZoom(Ly.max);
+    const sat = this.base() === 'sat';
+    this.planned && this.planned.setStyle({ color: sat ? '#FFFFFF' : '#43627A', opacity: sat ? 0.95 : 1 });
+    this.track && this.track.setStyle({ color: sat ? '#FFD23F' : '#1A8FE3' });
+  }
+  componentDidMount() {
+    this.loadAsync();
+    window.addEventListener('online', this.onOnline);
+    this.si = setInterval(() => this.syncNow(), 60000);
+    document.addEventListener('visibilitychange', this.onVis);
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+    const go = () => { if (window.L && this.mapRef.current) this.initMap(); else this.t0 = setTimeout(go, 100); };
+    go();
+  }
+  componentWillUnmount() { document.removeEventListener('visibilitychange', this.onVis); window.removeEventListener('online', this.onOnline); clearInterval(this.si); clearTimeout(this.ts); this.releaseWake(); if (this.wid != null && navigator.geolocation) navigator.geolocation.clearWatch(this.wid); this.save(); this.persist(); clearInterval(this.pt); clearTimeout(this.t0); clearTimeout(this.tg); clearInterval(this.timer); clearInterval(this.dl); clearTimeout(this.tt); this.map && this.map.remove(); }
+  componentDidUpdate(pp, ps) {
+    
+    this.persist();
+  }
+  persist() {
+    if (!this.loaded) return;
+    const s = this.state;
+    if (s.pins === this._sp && s.history === this._sh && s.off === this._so) return;
+    this._sp = s.pins; this._sh = s.history; this._so = s.off;
+    this.save();
+  }
+  KEY = 'paktang.data.v1';
+  idb(mode, fn) {
+    return new Promise((res, rej) => {
+      const o = indexedDB.open('paktang', 1);
+      o.onupgradeneeded = () => o.result.createObjectStore('kv');
+      o.onerror = () => rej(o.error);
+      o.onsuccess = () => { const tx = o.result.transaction('kv', mode), r = fn(tx.objectStore('kv')); tx.oncomplete = () => res(r && r.result); tx.onerror = () => rej(tx.error); };
+    });
+  }
+  SUPABASE = { url: '', anonKey: '' };
+  saved = { pins: new Map(), trips: new Map(), trails: new Map() };
+  db() {
+    if (this._db) return this._db;
+    const D = new window.Dexie('paktang-db');
+    D.version(1).stores({ pins: 'id, trail, _dirty', trips: 'id, trailId, _dirty', trails: 'id, _dirty', meta: 'k', tomb: '++n, table' });
+    return (this._db = D);
+  }
+  strip(r) { const { _dirty, _at, ...x } = r; return x; }
+  deviceId() {
+    try { let d = localStorage.getItem('paktang.device'); if (!d) { d = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem('paktang.device', d); } return d; } catch (e) { return 'unknown'; }
+  }
+  async save() {
+    if (!this.loaded || !window.Dexie) return;
+    const s = this.state, db = this.db();
+    const live = s.rec || (s.summary && this.trk.length) ? { trailId: s.trailId, trk: this.trk, dist: this.rDist, gain: this.rGain, elapsed: s.elapsed, idx: s.idx } : null;
+    const rows = { pins: s.pins, trips: s.history, trails: this.TRAILS.filter(t => t.id.startsWith('gpx')) };
+    try {
+      await db.transaction('rw', db.pins, db.trips, db.trails, db.meta, db.tomb, async () => {
+        for (const tb of ['pins', 'trips', 'trails']) {
+          const prev = this.saved[tb], next = new Map(), put = [], now = Date.now();
+          rows[tb].forEach(r => { const j = JSON.stringify(r); next.set(r.id, j); if (prev.get(r.id) !== j) put.push({ ...r, _dirty: 1, _at: now }); });
+          const del = [...prev.keys()].filter(k => !next.has(k));
+          if (put.length) await db[tb].bulkPut(put);
+          if (del.length) { await db[tb].bulkDelete(del); await db.tomb.bulkAdd(del.map(id => ({ table: tb, id }))); }
+          this.saved[tb] = next;
+        }
+        await db.meta.bulkPut([{ k: 'base', v: this.base() }, { k: 'off', v: s.off }, { k: 'live', v: this.realMode ? live : null }]);
+      });
+      this.saveWarned = false;
+      this.refreshSync();
+      clearTimeout(this.ts); this.ts = setTimeout(() => this.syncNow(), 3000);
+    } catch (e) {
+      if (!this.saveWarned) { this.saveWarned = true; this.showToast('บันทึกข้อมูลไม่สำเร็จ พื้นที่ในเครื่องอาจเต็ม'); }
+    }
+  }
+  async refreshSync() {
+    if (!window.Dexie) return;
+    try {
+      const db = this.db();
+      const n = (await db.pins.where('_dirty').equals(1).count()) + (await db.trips.where('_dirty').equals(1).count()) + (await db.trails.where('_dirty').equals(1).count()) + (await db.tomb.count());
+      if (n !== this.state.unsynced) this.setState({ unsynced: n });
+    } catch (e) {}
+  }
+  async syncNow(manual) {
+    const cfg = this.SUPABASE;
+    if (!cfg.url || !cfg.anonKey) { if (this.state.sync !== 'local') this.setState({ sync: 'local' }); if (manual) this.showToast('ยังไม่ได้เชื่อมเซิร์ฟเวอร์ ข้อมูลเก็บในเครื่องอย่างปลอดภัย'); return; }
+    if (!navigator.onLine) { this.setState({ sync: 'offline' }); return; }
+    if (this.syncing || !window.Dexie) return;
+    this.syncing = true; this.setState({ sync: 'syncing' });
+    const db = this.db(), dev = this.deviceId();
+    const H = { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' };
+    try {
+      for (const tb of ['trails', 'trips', 'pins']) {
+        const rows = await db[tb].where('_dirty').equals(1).toArray();
+        if (!rows.length) continue;
+        const body = rows.map(r => ({ id: String(r.id), device_id: dev, data: this.strip(r), updated_at: new Date(r._at || Date.now()).toISOString() }));
+        const res = await fetch(cfg.url + '/rest/v1/' + tb, { method: 'POST', headers: H, body: JSON.stringify(body) });
+        if (!res.ok) throw res;
+        await db.transaction('rw', db[tb], async () => { for (const r of rows) { const c = await db[tb].get(r.id); if (c && c._at === r._at) await db[tb].update(r.id, { _dirty: 0 }); } });
+      }
+      for (const t of await db.tomb.toArray()) {
+        const res = await fetch(cfg.url + '/rest/v1/' + t.table + '?id=eq.' + encodeURIComponent(String(t.id)) + '&device_id=eq.' + encodeURIComponent(dev), { method: 'DELETE', headers: H });
+        if (!res.ok) throw res;
+        await db.tomb.delete(t.n);
+      }
+      this.setState({ sync: 'ok', lastSync: Date.now() });
+    } catch (e) {
+      const st = e && e.status;
+      this.setState({ sync: !navigator.onLine ? 'offline' : (!st || st >= 500) ? 'paused' : 'error' });
+    }
+    this.syncing = false;
+    this.refreshSync();
+  }
+  onOnline = () => this.syncNow();
+  resetAll() {
+    if (this.state.rec) { this.showToast('กรุณาหยุดบันทึกก่อนล้างข้อมูล'); return; }
+    this.TRAILS = this.TRAILS.filter(t => !t.id.startsWith('gpx'));
+    Object.keys(this.geo).forEach(k => { if (k.startsWith('gpx')) delete this.geo[k]; });
+    if (window.Dexie) { const db = this.db(); db.transaction('rw', db.pins, db.trips, db.trails, db.meta, db.tomb, () => Promise.all([db.pins.clear(), db.trips.clear(), db.trails.clear(), db.meta.clear(), db.tomb.clear()])).then(() => this.refreshSync()).catch(() => {}); }
+    this.saved = { pins: new Map(), trips: new Map(), trails: new Map() };
+    this.trk = []; this.rDist = 0; this.rGain = 0; this.eBase = null;
+    const wasGpx = !this.geo[this.state.trailId], nid = this.nearest().id;
+    if (wasGpx) this.useTrail(nid);
+    this.setState({ ...this.seed(), ...(wasGpx ? { trailId: nid, idx: 0, elapsed: 0 } : {}), histOpen: false, viewTrip: null, pinsOpen: false, selId: null, viewer: null }, () => {
+      this.persist();
+      if (wasGpx) this.selectTrail(nid, true); else this.syncPins();
+    });
+    this.showToast('ล้างข้อมูลแล้ว กลับเป็นค่าเริ่มต้น');
+  }
+  parse(d) {
+    if (!d) return null;
+    (d.trails || []).forEach(t => { if (!this.geo[t.id] && t.pts && t.pts.length > 1) { this.TRAILS.push(t); this.geo[t.id] = this.build(t); } });
+    const ok = id => !!this.geo[id];
+    return { base: this.LAYERS[d.base] ? d.base : 'topo', pins: (d.pins || []).filter(p => ok(p.trail)), history: (d.history || []).filter(r => ok(r.trailId)), off: d.off || {}, live: d.live && ok(d.live.trailId) && d.live.trk && d.live.trk.length ? d.live : null };
+  }
+  async loadAsync() {
+    let d = null, migrated = false;
+    for (let i = 0; i < 50 && !window.Dexie; i++) await new Promise(r => setTimeout(r, 100));
+    if (window.Dexie) {
+      try {
+        const db = this.db();
+        const [pins, trips, trails, meta] = await Promise.all([db.pins.toArray(), db.trips.toArray(), db.trails.toArray(), db.meta.toArray()]);
+        if (pins.length || trips.length || trails.length || meta.length) {
+          const m = Object.fromEntries(meta.map(x => [x.k, x.v]));
+          d = { pins: pins.map(r => this.strip(r)).sort((a, b) => (a.id > b.id ? 1 : -1)), history: trips.map(r => this.strip(r)).sort((a, b) => (String(b.id) > String(a.id) ? 1 : -1)), trails: trails.map(r => this.strip(r)), base: m.base, off: m.off, live: m.live };
+        }
+      } catch (e) {}
+    }
+    if (!d) {
+      try { d = await this.idb('readonly', st => st.get(this.KEY)); } catch (e) {}
+      if (!d) { try { d = JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (e) {} }
+      migrated = !!d;
+    }
+    const p = this.parse(d);
+    if (p) {
+      const { live, ...rest } = p;
+      this._sp = rest.pins; this._sh = rest.history; this._so = rest.off;
+      this.setState(rest, () => { this.syncPins(); if (this.map) this.applyBase(); });
+      this.pendingLive = live;
+      if (!migrated) {
+        const mk = a => new Map(a.map(r => [r.id, JSON.stringify(r)]));
+        this.saved = { pins: mk(rest.pins), trips: mk(rest.history), trails: mk(this.TRAILS.filter(t => t.id.startsWith('gpx'))) };
+      }
+    }
+    this.loaded = true;
+    if (migrated) this.save();
+    this.refreshSync(); this.syncNow();
+    if (this.pendingLive && this.realMode && this.map) { const l = this.pendingLive; this.pendingLive = null; this.resumeLive(l); }
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  }
+  realMode = false; trk = []; rDist = 0; rGain = 0; eBase = null; tick = 0;
+  onPos = pos => {
+    const c = pos.coords, p = [c.latitude, c.longitude, c.altitude != null ? Math.round(c.altitude) : null];
+    this.real = p; this.USER = [p[0], p[1]];
+    if (!this.map) return;
+    if (!this.realMode) {
+      this.realMode = true; clearTimeout(this.tg);
+      if (this.state.rec) { clearInterval(this.timer); this.setState({ rec: false }); }
+      this.meMarker.setLatLng(this.USER);
+      if (this.pendingLive) { const l = this.pendingLive; this.pendingLive = null; this.resumeLive(l); }
+      else {
+        const n = this.nearest(), d = this.awayFromUser(n), far = d > 15;
+        this.setState({ gps: 'found' });
+        this.selectTrail(n.id, true, far);
+        if (far) { this.map.flyTo(this.center(this.USER, 15), 15, { duration: 0.8 }); this.showToast('พบตำแหน่งแล้ว · เส้นทางใกล้สุด ' + n.name + ' ห่าง ' + this.distTxt(d), 'เลือกเส้นทาง', () => this.setState({ picker: true, toast: null })); }
+        else this.showToast('GPS เลือก ' + n.name + ' ให้แล้ว', 'เปลี่ยน', () => this.setState({ picker: true, toast: null }));
+      }
+    }
+    if (this.state.rec) this.addPoint(p, c.accuracy); else this.meMarker.setLatLng(this.USER);
+    this.setState({ rEle: p[2], gpsAcc: Math.round(c.accuracy) });
+  };
+  addPoint(p, acc) {
+    if (acc > 40) return;
+    const last = this.trk[this.trk.length - 1];
+    if (last) {
+      const d = this.hav(last, p); if (d < 0.005) return;
+      this.rDist += d;
+      if (p[2] != null && this.eBase != null) { const de = p[2] - this.eBase; if (Math.abs(de) >= 4) { if (de > 0) this.rGain += de; this.eBase = p[2]; } }
+    }
+    if (this.eBase == null && p[2] != null) this.eBase = p[2];
+    this.trk.push([+p[0].toFixed(6), +p[1].toFixed(6), p[2] ?? 0, Date.now()]);
+    this.track.addLatLng([p[0], p[1]]); this.meMarker.setLatLng([p[0], p[1]]);
+    let k = this.state.idx, best = Infinity; this.route.forEach((q, j) => { const dd = this.hav(q, p); if (dd < best) { best = dd; k = j; } });
+    this.setState({ idx: best < 0.15 ? Math.max(this.state.idx, k) : this.state.idx, rDist: this.rDist, rGain: this.rGain });
+    this.map.panTo(this.center([p[0], p[1]]), { animate: true });
+  }
+  resumeLive(live) {
+    this.useTrail(live.trailId);
+    this.trk = live.trk || []; this.rDist = live.dist || 0; this.rGain = live.gain || 0;
+    const lp = this.trk[this.trk.length - 1]; this.eBase = lp ? lp[2] : null;
+    this.setState({ gps: 'found', trailId: live.trailId, idx: live.idx || 0, elapsed: live.elapsed || 0, rDist: this.rDist, rGain: this.rGain, summary: false }, () => {
+      this.planned.setLatLngs(this.route); this.track.setLatLngs(this.trk.map(q => [q[0], q[1]])); this.syncPins();
+      this.toggleRec();
+      this.map.flyTo(this.center(this.USER, 16), 16, { duration: 0.6 });
+    });
+    this.showToast('เดินต่อจากทริปที่ค้างไว้ · ' + this.rDist.toFixed(2) + ' กม.');
+  }
+  async wake() { try { if (navigator.wakeLock) this.wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
+  releaseWake() { try { this.wl && this.wl.release(); } catch (e) {} this.wl = null; }
+  onVis = () => {
+    if (document.visibilityState === 'hidden') this.save();
+    else if (this.state.rec && this.realMode) this.wake();
+  };
+  tileList(route) {
+    const la = route.map(p => p[0]), lo = route.map(p => p[1]), pad = 0.008;
+    const S = Math.min(...la) - pad, N = Math.max(...la) + pad, W = Math.min(...lo) - pad, E = Math.max(...lo) + pad;
+    const tx = (lon, z) => Math.floor((lon + 180) / 360 * 2 ** z), ty = (lat, z) => { const r = lat * Math.PI / 180; return Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 2 ** z); };
+    const out = [], tpl = this.tileUrl();
+    for (let z = 12; z <= 16 && out.length < 400; z++) for (let X = tx(W, z); X <= tx(E, z); X++) for (let Y = ty(N, z); Y <= ty(S, z); Y++) out.push(tpl.replace('{s}', 'abc'[(X + Y) % 3]).replace('{z}', z).replace('{x}', X).replace('{y}', Y));
+    return out.slice(0, 400);
+  }
+  async fetchTiles(urls, prog) {
+    if (!window.caches) return false;
+    const c = await caches.open('paktang-tiles'); let fail = 0;
+    for (let i = 0; i < urls.length; i += 6) {
+      await Promise.all(urls.slice(i, i + 6).map(u => c.match(u).then(m => m || fetch(u, { mode: 'no-cors' }).then(r => { if (r.ok || r.type === 'opaque') return c.put(u, r); fail++; })).catch(() => { fail++; })));
+      prog(Math.round(Math.min(urls.length, i + 6) / urls.length * 100));
+    }
+    return fail < urls.length * 0.2;
+  }
+  center(ll, zoom) {
+    const off = this.layout() === 'c' ? Math.round(this.state.cH / 2) - 20 : 40;
+    const z = zoom ?? this.map.getZoom();
+    return this.map.unproject(this.map.project(ll, z).add([0, off]), z);
+  }
+  initMap() {
+    const L = window.L;
+    this.map = L.map(this.mapRef.current, { zoomControl: false, attributionControl: true, minZoom: 5, maxZoom: 19 });
+    this.map.setView(this.USER, 14);
+    this.map.setView(this.center(this.USER, 14), 14);
+    this.map.attributionControl.setPrefix(false);
+    this.planned = L.polyline([], { color: '#43627A', weight: 4, dashArray: '2 8', lineCap: 'round' }).addTo(this.map);
+    this.track = L.polyline([], { color: '#1A8FE3', weight: 5, lineCap: 'round' }).addTo(this.map);
+    this.meMarker = L.marker(this.USER, { icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: '<div style="width:22px;height:22px;border-radius:50%;background:#0F5E9E;border:4px solid #fff;box-sizing:border-box;box-shadow:0 0 0 6px rgba(59,125,216,.22),0 2px 6px rgba(43,36,29,.3)"></div>' }), zIndexOffset: 1000 }).addTo(this.map);
+    this.pinLayer = L.layerGroup().addTo(this.map);
+    this.applyBase();
+    this.map.on('click', e => this.onMapTap(e));
+    this.map.on('zoomend', () => { this.syncPins(); this.setState({ zoom: this.map.getZoom() }); });
+    this.startSim = () => {
+      if (this.state.gps === 'found' || this.realMode) return;
+      const n = this.nearest();
+      this.setState({ gps: 'found' });
+      this.selectTrail(n.id, true);
+      this.showToast('ไม่พบสัญญาณ GPS · ใช้โหมดจำลองที่ ' + n.name + ' · ห่าง ' + this.distTxt(this.awayFromUser(n)), 'เปลี่ยน', () => this.setState({ picker: true, toast: null }));
+    };
+    if (navigator.geolocation) {
+      this.wid = navigator.geolocation.watchPosition(this.onPos, err => {
+        if (this.realMode) return;
+        clearTimeout(this.tg); this.tg = setTimeout(this.startSim, 300);
+        if (err.code === 1) setTimeout(() => this.showToast('ไม่ได้รับสิทธิ์ตำแหน่ง ใช้โหมดจำลองแทน · เปิดได้ที่ ตั้งค่า › ความเป็นส่วนตัว › บริการหาตำแหน่ง'), 900);
+      }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+      this.tg = setTimeout(this.startSim, 15000);
+    } else this.tg = setTimeout(this.startSim, 1800);
+  }
+  selectTrail(id, silent, noFly) {
+    if (this.state.rec) { this.showToast('กรุณาหยุดบันทึกก่อนเปลี่ยนเส้นทาง'); return; }
+    this.useTrail(id);
+    this.setState({ trailId: id, idx: 0, elapsed: 0, picker: false, query: '', selId: null }, () => {
+      this.planned.setLatLngs(this.route);
+      this.track.setLatLngs([]);
+      this.meMarker.setLatLng(this.realMode ? this.USER : this.route[0]);
+      this.syncPins();
+      if (!noFly) this.map.flyToBounds(this.route, { paddingTopLeft: [40, 130], paddingBottomRight: [40, this.layout() === 'c' ? 360 : 200], duration: 0.8, maxZoom: 16 });
+    });
+    if (!silent) { const t = this.TRAILS.find(x => x.id === id); this.showToast('เปลี่ยนเป็น ' + t.name + ' แล้ว'); }
+  }
+  syncPins() {
+    if (!this.map) return;
+    const L = window.L;
+    this.pinLayer.clearLayers();
+    const pins = this.state.pins.filter(p => p.trail === this.state.trailId);
+    const pt = pins.map(p => this.map.latLngToLayerPoint([p.lat, p.lng]));
+    const rp = this.route.map(q => this.map.latLngToLayerPoint(q));
+    const cx = rp.reduce((s, q) => s + q.x, 0) / rp.length, cy = rp.reduce((s, q) => s + q.y, 0) / rp.length;
+    const segD = (x, y) => { let m = Infinity; for (let j = 1; j < rp.length; j++) { const A = rp[j - 1], B = rp[j], dx = B.x - A.x, dy = B.y - A.y, l2 = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((x - A.x) * dx + (y - A.y) * dy) / l2)); m = Math.min(m, Math.hypot(x - A.x - t * dx, y - A.y - t * dy)); } return m; };
+    const T = 36, placed = [];
+    pins.forEach((p, i) => {
+      const c = this.TYPES[p.type].color, on = p.id === this.state.selId, ph = p.photos || [];
+      const sz = on ? 40 : 32;
+      let thumb = '';
+      if (ph.length) {
+        const P = pt[i], pcx = P.x, pcy = P.y - sz / 2;
+        let k = 0, best = Infinity; rp.forEach((q, j) => { const d = q.distanceTo(P); if (d < best) { best = d; k = j; } });
+        const A = rp[Math.max(0, k - 1)], B = rp[Math.min(rp.length - 1, k + 1)];
+        let tx = B.x - A.x, ty = B.y - A.y; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+        let nx = -ty, ny = tx;
+        if (nx * (P.x - cx) + ny * (P.y - cy) < 0) { nx = -nx; ny = -ny; }
+        const base = Math.atan2(ny, nx);
+        let pick = null, fallback = null, fbScore = -Infinity;
+        for (const off of [44, 62, 82, 104]) {
+          for (const da of [0, 0.5, -0.5, 1, -1, 1.5, -1.5, 2.2, -2.2, Math.PI]) {
+            const ang = base + da, mx = pcx + Math.cos(ang) * off, my = pcy + Math.sin(ang) * off;
+            const dRoute = segD(mx, my);
+            const dThumb = Math.min(Infinity, ...placed.map(q => Math.max(Math.abs(q[0] - mx), Math.abs(q[1] - my))));
+            const dPin = Math.min(Infinity, ...pt.map((q, j) => j === i ? Infinity : Math.hypot(q.x - mx, q.y - sz / 2 - my)));
+            const ok = dRoute > T / 2 + 8 && dThumb > T + 6 && dPin > T / 2 + 18;
+            if (ok) { pick = [mx, my]; break; }
+            const score = Math.min(dRoute - T / 2, dThumb - T, dPin - T / 2);
+            if (score > fbScore) { fbScore = score; fallback = [mx, my]; }
+          }
+          if (pick) break;
+        }
+        const [MX, MY] = pick || fallback;
+        placed.push([MX, MY]);
+        const ax = sz / 2, ay = sz - sz / 2, mx = MX - P.x + sz / 2, my = MY - P.y + sz;
+        const len = Math.hypot(mx - ax, my - ay), ang = Math.atan2(my - ay, mx - ax) * 180 / Math.PI;
+        thumb = '<div style="position:absolute;left:' + ax + 'px;top:' + (ay - 1) + 'px;width:' + len + 'px;height:2px;background:#fff;transform-origin:0 50%;transform:rotate(' + ang + 'deg);box-shadow:0 0 2px rgba(43,36,29,.4);pointer-events:none"></div>'
+          + '<div data-thumb="1" style="position:absolute;left:' + (mx - T / 2) + 'px;top:' + (my - T / 2) + 'px;width:' + T + 'px;height:' + T + 'px;border-radius:8px;border:2px solid ' + c + ';box-sizing:border-box;overflow:hidden;background:#E6F2F8;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(43,36,29,.35);cursor:zoom-in"><img src="' + ph[ph.length - 1] + '" style="width:100%;height:100%;object-fit:cover;display:block;pointer-events:none"></div>'
+          + (ph.length > 1 ? '<span style="position:absolute;left:' + (mx + T / 2 - 12) + 'px;top:' + (my - T / 2 - 8) + 'px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;border:2px solid #fff;background:#2B241D;color:#fff;font:600 10px/14px Sarabun,sans-serif;text-align:center;pointer-events:none">' + ph.length + '</span>' : '');
+      }
+      const html = '<div style="position:relative;width:' + sz + 'px;height:' + sz + 'px">' + thumb + '<div style="position:relative;width:' + sz + 'px;height:' + sz + 'px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:' + c + ';border:3px solid #fff;box-sizing:border-box;box-shadow:0 3px 8px rgba(43,36,29,.35);display:flex;align-items:center;justify-content:center"><div style="width:8px;height:8px;border-radius:50%;background:#fff"></div></div></div>';
+      L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', iconSize: [sz, sz], iconAnchor: [sz / 2, sz], html }), zIndexOffset: ph.length ? 200 : 0 })
+        .on('click', e => {
+          const t = e.originalEvent && e.originalEvent.target;
+          if (t && t.closest && t.closest('[data-thumb]')) this.setState({ viewer: { pinId: p.id, i: ph.length - 1 }, toast: null });
+          else this.openPin(p.id);
+        }).addTo(this.pinLayer);
+    });
+  }
+  openPin(id) { clearTimeout(this.tt); this.setState({ selId: id, toast: null }, () => this.syncPins()); }
+  showToast(text, actionLabel, action) { clearTimeout(this.tt); this.toastFn = action; this.setState({ toast: { text, hasAction: !!action, actionLabel } }); this.tt = setTimeout(() => this.setState({ toast: null }), 4000); }
+  updSel(patch) { this.setState(s => ({ pins: s.pins.map(p => p.id === s.selId ? { ...p, ...patch } : p) }), () => this.syncPins()); }
+  toggleRec = () => {
+    if (this.state.gps !== 'found') { this.showToast('กำลังรอสัญญาณ GPS'); return; }
+    if (this.realMode) {
+      if (this.state.rec) { clearInterval(this.timer); this.releaseWake(); this.setState({ rec: false, summary: true, toast: null }, () => this.save()); return; }
+      if (!this.trk.length) { this.rDist = 0; this.rGain = 0; this.eBase = null; this.track.setLatLngs([]); this.setState({ idx: 0, elapsed: 0, rDist: 0, rGain: 0 }); if (this.real) this.addPoint(this.real, 0); }
+      this.t0rec = Date.now() - (this.trk.length ? this.state.elapsed : 0) * 1000;
+      clearInterval(this.timer);
+      this.timer = setInterval(() => { this.setState({ elapsed: Math.floor((Date.now() - this.t0rec) / 1000) }); if (++this.tick % 5 === 0) this.save(); }, 1000);
+      this.setState({ rec: true }); this.wake();
+      return;
+    }
+    if (this.state.rec) {
+      clearInterval(this.timer);
+      this.setState({ rec: false, summary: true, toast: null });
+      return;
+    }
+    if (this.state.idx >= this.route.length - 1) { this.setState({ idx: 0, elapsed: 0 }); this.track.setLatLngs([this.route[0]]); }
+    else if (this.state.idx === 0) this.track.setLatLngs([this.route[0]]);
+    this.setState({ rec: true });
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      const idx = Math.min(this.state.idx + 1, this.route.length - 1);
+      this.setState(s => ({ idx, elapsed: s.elapsed + 92 + Math.round(Math.random() * 30) }));
+      this.track.addLatLng(this.route[idx]);
+      this.meMarker.setLatLng(this.route[idx]);
+      this.map.panTo(this.center(this.route[idx]), { animate: true });
+      if (idx >= this.route.length - 1) { clearInterval(this.timer); setTimeout(() => this.setState({ rec: false, summary: true, toast: null }), 600); }
+    }, 1200 / (this.props.simSpeed ?? 1));
+  };
+  profile(eles, n) {
+    const mn = Math.min(...this.eles), mx = Math.max(...this.eles), N = this.eles.length - 1;
+    return eles.slice(0, n).map((e, i) => (i / N * 300).toFixed(1) + ',' + (56 - (e - mn) / ((mx - mn) || 1) * 50).toFixed(1)).join(' ');
+  }
+  shape(pts, all) {
+    const la = all.map(p => p[0]), lo = all.map(p => p[1]);
+    const mnA = Math.min(...la), mxA = Math.max(...la), mnO = Math.min(...lo), mxO = Math.max(...lo);
+    const k = Math.min(280 / ((mxO - mnO) || 1), 130 / ((mxA - mnA) || 1));
+    const ox = (300 - (mxO - mnO) * k) / 2, oy = (150 - (mxA - mnA) * k) / 2;
+    return pts.map(p => [+(ox + (p[1] - mnO) * k).toFixed(1), +(150 - oy - (p[0] - mnA) * k).toFixed(1)]);
+  }
+  snap(rec, live) {
+    const rp = rec.fromGpx ? this.state.pins.filter(p => p.trail === rec.trailId) : rec.pins;
+    const g = this.geo[rec.trailId], tr = this.TRAILS.find(t => t.id === rec.trailId), n = Math.max(1, rec.idx);
+    const real = rec.trk && rec.trk.length > 1;
+    const done = real ? rec.trk.map(p => [p[0], p[1]]) : g.route.slice(0, n + 1), el = real ? rec.trk.map(p => p[2]) : g.eles.slice(0, n + 1);
+    const B = real ? g.route.concat(done) : g.route;
+    let gain = 0, loss = 0; for (let i = 1; i < el.length; i++) { const d = el[i] - el[i - 1]; d > 0 ? gain += d : loss -= d; }
+    if (real && rec.gain != null) gain = Math.round(rec.gain);
+    const dist = real ? rec.dist : g.cum[rec.idx], mn = Math.min(...el), mx = Math.max(Math.max(...el), rec.idx >= g.route.length - 1 ? g.max : 0);
+    const pts = el.map((e, i) => (i / (el.length - 1) * 300).toFixed(1) + ',' + (66 - (e - mn) / ((mx - mn) || 1) * 58).toFixed(1));
+    const toS = a => a.map(p => p.join(',')).join(' ');
+    const st = this.shape([g.route[0]], B)[0];
+    const atEnd = rec.idx >= g.route.length - 1;
+    return {
+      isLive: live, isPast: !live,
+      status: atEnd ? 'เดินครบเส้นทาง' : 'บันทึกทริปแล้ว',
+      name: tr.name, area: tr.area, date: rec.date,
+      dist: dist.toFixed(2), pct: Math.round(dist / g.len * 100) + '%', time: this.fmt(rec.elapsed),
+      pace: dist > 0 ? Math.round(rec.elapsed / 60 / dist) : 0,
+      gain: gain.toLocaleString(), loss: loss.toLocaleString(), max: mx.toLocaleString(), min: mn.toLocaleString(),
+      line: pts.join(' '), area2: '0,70 ' + pts.join(' ') + ' 300,70',
+      planShape: toS(this.shape(g.route, B)), trackShape: toS(this.shape(done, B)),
+      startX: st[0], startY: st[1],
+      pinDots: rp.map(p => { const xy = this.shape([[p.lat, p.lng]], B)[0]; return { x: xy[0], y: xy[1], color: this.TYPES[p.type].color }; }),
+      pinCount: rp.length, noPins: rp.length === 0,
+      pins: rp.map(p => ({ title: p.note.trim() || this.TYPES[p.type].label, label: this.TYPES[p.type].label, color: this.TYPES[p.type].color, ele: p.ele.toLocaleString(), at: p.at, photo: (p.photos || []).length > 0, open: () => { if (live) this.setState({ summary: false }, () => this.openPin(p.id)); else if (rec.fromGpx) this.goPinMode(rec.trailId, p.id); } })),
+      canPin: !live && !!rec.fromGpx, pinOnRoute: () => this.goPinMode(rec.trailId),
+      resumeLabel: atEnd ? 'กลับแผนที่' : 'เดินต่อ',
+    };
+  }
+  goPinMode(trailId, openId) {
+    if (this.state.rec) { this.showToast('กรุณาหยุดบันทึกก่อน'); return; }
+    this.setState({ viewTrip: null, histOpen: false, pinsOpen: false, summary: false, gps: 'found', toast: null }, () => {
+      if (this.state.trailId !== trailId) this.selectTrail(trailId, true);
+      this.setState({ pinMode: !openId }, () => { if (openId) { const p = this.state.pins.find(x => x.id === openId); if (p) this.map.flyTo(this.center([p.lat, p.lng], 16), 16, { duration: 0.6 }); this.openPin(openId); } });
+    });
+  }
+  onMapTap(e) {
+    if (!this.state.pinMode || this.state.selId) return;
+    const P = this.map.latLngToLayerPoint(e.latlng), rp = this.route.map(q => this.map.latLngToLayerPoint(q));
+    const tr = this.trail(), pts = tr.pts || this.route.map((q, i) => [q[0], q[1], this.eles[i], 0]);
+    let best = Infinity, bi = 1, bt = 0;
+    for (let j = 1; j < rp.length; j++) { const A = rp[j - 1], B = rp[j], dx = B.x - A.x, dy = B.y - A.y, l2 = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((P.x - A.x) * dx + (P.y - A.y) * dy) / l2)); const d = Math.hypot(P.x - A.x - t * dx, P.y - A.y - t * dy); if (d < best) { best = d; bi = j; bt = t; } }
+    if (best > 44) { this.showToast('แตะให้ใกล้เส้นทางมากขึ้น'); return; }
+    const a = pts[bi - 1], b = pts[bi], L = (x, y) => x + (y - x) * bt;
+    const tm = a[3] && b[3] ? L(a[3], b[3]) : 0, p2 = n => String(n).padStart(2, '0');
+    const pin = { id: Date.now(), trail: this.state.trailId, type: 'view', note: '', lat: L(a[0], b[0]), lng: L(a[1], b[1]), ele: Math.round(L(a[2] || 0, b[2] || 0)), at: tm ? p2(new Date(tm).getHours()) + ':' + p2(new Date(tm).getMinutes()) : '–', photos: [] };
+    this.setState(st => ({ pins: [...st.pins, pin] }), () => this.openPin(pin.id));
+  }
+  dragStart = e => {
+    const y0 = e.clientY, h0 = this.state.cH, MIN = 172, MAX = 340;
+    let moved = false;
+    const mv = ev => { const dy = y0 - ev.clientY; if (Math.abs(dy) > 4) moved = true; if (moved) this.setState({ dragging: true, cH: Math.max(MIN - 20, Math.min(MAX + 20, h0 + dy)) }); };
+    const up = () => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+      const target = !moved ? (h0 > (MIN + MAX) / 2 ? MIN : MAX) : (this.state.cH > (MIN + MAX) / 2 ? MAX : MIN);
+      this.setState({ dragging: false, cH: target });
+    };
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up);
+  };
+  renderVals() {
+    const s = this.state, L = this.layout(), me = this.me(), tr = this.trail(), g = this.geo[tr.id];
+    const found = s.gps === 'found';
+    const trPins = s.pins.filter(p => p.trail === s.trailId);
+    const sel = trPins.find(p => p.id === s.selId);
+    let gain = 0; for (let i = 1; i <= s.idx; i++) gain += Math.max(0, this.eles[i] - this.eles[i - 1]);
+    const selV = sel ? (() => {
+      const T = this.TYPES[sel.type], d = this.hav(me, [sel.lat, sel.lng]);
+      return { title: sel.note.trim() || T.label, note: sel.note, ele: sel.ele.toLocaleString(), at: sel.at, away: this.distTxt(d), coord: sel.lat.toFixed(5) + '° N, ' + sel.lng.toFixed(5) + '° E', photoTxt: sel.photos.length ? 'รูปภาพ ' + sel.photos.length + ' รูป' : 'ยังไม่มีรูป ถ่ายหรือเลือกจากคลังภาพ', photos: sel.photos.map((src, i) => ({ src, view: () => this.setState({ viewer: { pinId: sel.id, i } }), remove: e => { e && e.stopPropagation(); this.updSel({ photos: sel.photos.filter((_, j) => j !== i) }); } })) };
+    })() : {};
+    const q = s.query.trim().toLowerCase();
+    const list = this.TRAILS.map(t => ({ t, d: this.awayFromUser(t) }))
+      .filter(({ t }) => !q || (t.name + ' ' + t.area + ' ' + t.tags).toLowerCase().includes(q))
+      .sort((a, b) => a.d - b.d);
+    const near = this.nearest();
+    const offKey = tr.id + '|' + this.base(), offDone = !!s.off[offKey], loading = s.offLoading === tr.id;
+    return {
+      sumOpen: s.summary || !!s.viewTrip,
+      sm: s.summary ? this.snap({ trailId: s.trailId, idx: s.idx, elapsed: s.elapsed, pins: trPins, date: this.thDate(), trk: this.realMode ? this.trk : null, dist: s.rDist || 0, gain: s.rGain || 0 }, true) : s.viewTrip ? this.snap(s.history.find(x => x.id === s.viewTrip), false) : {},
+      ...(() => {
+        const v = s.viewer, vp = v && s.pins.find(p => p.id === v.pinId), list = vp ? vp.photos || [] : [];
+        const i = v ? Math.min(v.i, list.length - 1) : 0, multi = list.length > 1;
+        const go = d => this.setState(st => ({ viewer: { ...st.viewer, i: (i + d + list.length) % list.length } }));
+        return {
+          viewerOpen: !!(vp && list.length), viewerSrc: list[i] || '',
+          viewerTitle: vp ? (vp.note.trim() || this.TYPES[vp.type].label) : '',
+          viewerMeta: vp ? this.TYPES[vp.type].label + ' · ' + vp.ele.toLocaleString() + ' ม. · ' + vp.at : '',
+          viewerCount: (i + 1) + ' / ' + list.length, viewerMulti: multi,
+          viewerDetails: e => { e && e.stopPropagation(); const id = v.pinId; this.setState({ viewer: null }, () => this.openPin(id)); },
+          closeViewer: () => this.setState({ viewer: null }),
+          viewerPrev: e => { e && e.stopPropagation(); go(-1); }, viewerNext: e => { e && e.stopPropagation(); go(1); },
+          stopProp: e => e.stopPropagation(),
+        };
+      })(),
+      histCount: s.history.length, histOpen: s.histOpen,
+      ...(() => {
+        const cur = trPins.map(p => ({ p, trailId: s.trailId, histId: null }));
+        const past = s.history.flatMap(r => (r.fromGpx ? (r.trailId === s.trailId ? [] : s.pins.filter(p => p.trail === r.trailId)) : r.pins).map(p => ({ p, trailId: r.trailId, histId: r.id, date: r.date })));
+        const scoped = s.pinScope === 'trail' ? cur : cur.concat(past);
+        const rows = scoped.filter(x => s.pinFilter === 'all' || x.p.type === s.pinFilter);
+        const on = { bg: 'var(--surface-card)', sh: 'var(--shadow-sm)' }, off = { bg: 'transparent', sh: 'none' };
+        const mkF = (k, label, color, count) => { const a = s.pinFilter === k; return { label, color, count, bg: a ? 'var(--surface-card)' : 'transparent', bd: a ? 'var(--brand-primary)' : 'var(--border-default)', pick: () => this.setState({ pinFilter: k }) }; };
+        return {
+          showPinsBtn: found,
+          pinsBtnBottom: L === 'c' ? (s.cH + 16) + 'px' : L === 'a' ? (s.rec ? '240px' : '200px') : '150px',
+          pinsOpen: s.pinsOpen,
+          openPins: () => this.setState({ pinsOpen: true, toast: null }),
+          closePins: () => this.setState({ pinsOpen: false }),
+          pinsSub: s.pinScope === 'trail' ? tr.name + ' · ' + trPins.length + ' หมุด' : 'ทุกทริป · ' + scoped.length + ' หมุด',
+          scopeTrail: () => this.setState({ pinScope: 'trail' }), scopeAll: () => this.setState({ pinScope: 'all' }),
+          scopeTrailBg: (s.pinScope === 'trail' ? on : off).bg, scopeTrailSh: (s.pinScope === 'trail' ? on : off).sh,
+          scopeAllBg: (s.pinScope === 'all' ? on : off).bg, scopeAllSh: (s.pinScope === 'all' ? on : off).sh,
+          pinFilters: [mkF('all', 'ทั้งหมด', 'var(--text-muted)', scoped.length)].concat(Object.entries(this.TYPES).map(([k, T]) => mkF(k, T.label, T.color, scoped.filter(x => x.p.type === k).length))),
+          pinsEmpty: rows.length === 0,
+          pinsEmptyTxt: scoped.length === 0 ? 'ยังไม่มีหมุดในเส้นทางนี้ กด "ปักหมุดที่นี่" ระหว่างเดินเพื่อเริ่มปัก' : 'ไม่มีหมุดประเภทนี้',
+          pinRows: rows.map(({ p, trailId, histId, date }) => {
+            const T = this.TYPES[p.type], ph = p.photos || [], tn = this.TRAILS.find(t => t.id === trailId).name;
+            const isCur = !histId;
+            return {
+              title: p.note.trim() || T.label, label: T.label, color: T.color, tint: T.tint, ele: p.ele.toLocaleString(), at: p.at,
+              hasPhoto: ph.length > 0, noPhoto: ph.length === 0, src: ph[ph.length - 1] || '',
+              where: isCur ? (ph.length ? 'รูป ' + ph.length + ' รูป' : 'ยังไม่มีรูป') : tn + ' · ' + date,
+              away: isCur ? this.distTxt(this.hav(me, [p.lat, p.lng])) : this.distTxt(this.hav(this.USER, [p.lat, p.lng])),
+              awayLabel: 'จากคุณ',
+              open: () => {
+                if (isCur) { this.setState({ pinsOpen: false }, () => { this.map.flyTo(this.center([p.lat, p.lng], 16), 16, { duration: 0.6 }); this.openPin(p.id); }); }
+                else this.setState({ viewTrip: histId });
+              },
+            };
+          }),
+        };
+      })(),
+      askReset: () => {
+        const nG = this.TRAILS.filter(t => t.id.startsWith('gpx')).length;
+        this.showToast('ล้างหมุด ' + s.pins.length + ' หมุด ทริป ' + s.history.length + ' ทริป' + (nG ? ' และ GPX ' + nG + ' ไฟล์' : '') + '?', 'ล้างข้อมูล', () => this.resetAll());
+      },
+      openHistory: () => this.setState({ histOpen: true, toast: null }),
+      closeHistory: () => this.setState({ histOpen: false }),
+      closeTrip: () => this.setState({ viewTrip: null }),
+      walkAgain: () => { const r = s.history.find(x => x.id === s.viewTrip); this.setState({ viewTrip: null, histOpen: false, pinsOpen: false, gps: 'found' }); this.selectTrail(r.trailId); },
+      syncTitle: s.sync === 'syncing' ? 'กำลังซิงก์…' : (s.unsynced || 0) > 0 ? 'ยังไม่ซิงก์ ' + s.unsynced + ' รายการ' : s.sync === 'ok' ? 'ซิงก์แล้ว' : 'ข้อมูลทั้งหมดอยู่ในเครื่อง',
+      syncSub: ({ local: 'ยังไม่ได้เชื่อมเซิร์ฟเวอร์ ข้อมูลเก็บในเครื่องอย่างปลอดภัย', paused: 'เซิร์ฟเวอร์พัก ข้อมูลเก็บในเครื่องแล้ว จะซิงก์อัตโนมัติเมื่อเซิร์ฟเวอร์พร้อม', offline: 'ไม่มีสัญญาณ ข้อมูลเก็บในเครื่องแล้ว จะซิงก์เมื่อกลับมาออนไลน์', error: 'ซิงก์ไม่สำเร็จ จะลองใหม่อัตโนมัติ', syncing: 'อย่าเพิ่งปิดแอป', ok: s.lastSync ? 'ล่าสุด ' + new Date(s.lastSync).toTimeString().slice(0, 5) + ' น.' : '' })[s.sync || 'local'],
+      syncDot: s.sync === 'ok' && !(s.unsynced > 0) ? 'var(--semantic-success)' : s.sync === 'syncing' ? 'var(--brand-primary)' : (s.unsynced > 0 || ['paused', 'offline', 'error'].includes(s.sync)) ? 'var(--semantic-warning)' : 'var(--border-strong)',
+      syncNowBtn: () => this.syncNow(true),
+      histTotal: 'รวม ' + s.history.length + ' ทริป · ' + s.history.reduce((a, r) => a + (r.dist ?? this.geo[r.trailId].cum[r.idx]), 0).toFixed(1) + ' กม.',
+      histList: s.history.map(r => {
+        const v = this.snap(r, false);
+        return { name: v.name, date: v.date, status: v.status, pinCount: v.pinCount, dist: v.dist, time: v.time, gain: v.gain, plan: v.planShape, track: v.trackShape, open: () => this.setState({ viewTrip: r.id }) };
+      }),
+      resumeRec: () => { const atEnd = s.idx >= this.route.length - 1; this.setState({ summary: false }, () => { if (!atEnd) this.toggleRec(); }); },
+      finishTrip: () => {
+        const d = (this.realMode ? (s.rDist || 0) : this.cum[s.idx]).toFixed(2), t = this.fmt(s.elapsed);
+        const rec = { id: 'h' + Date.now(), trailId: s.trailId, idx: s.idx, elapsed: s.elapsed, date: this.thDate(), pins: trPins.map(p => ({ ...p })), ...(this.realMode ? { trk: this.trk, dist: s.rDist || 0, gain: s.rGain || 0 } : {}) };
+        if (this.realMode) { this.trk = []; this.rDist = 0; this.rGain = 0; this.eBase = null; }
+        this.setState(st => ({ summary: false, idx: 0, elapsed: 0, history: [rec, ...st.history] }), () => { this.track.setLatLngs([]); this.meMarker.setLatLng(this.realMode ? this.USER : this.route[0]); this.save(); });
+        this.showToast('บันทึกทริป ' + tr.name + ' แล้ว · ' + d + ' กม.', 'ดูประวัติ', () => this.setState({ histOpen: true, toast: null }));
+      },
+      mapRef: this.mapRef,
+      isA: L === 'a', isB: L === 'b', isC: L === 'c',
+      showHeader: L !== 'b' || !s.rec,
+      trailName: found ? tr.name : 'กำลังค้นหาสัญญาณ GPS…',
+      trailSub: found ? g.len.toFixed(1) + ' กม. · ' + trPins.length + ' หมุด' : 'หรือเลือกเอง',
+      trailLen: g.len.toFixed(1), trailMaxTxt: g.max.toLocaleString(),
+      openPicker: () => this.setState({ picker: true, toast: null }),
+      closePicker: () => this.setState({ picker: false, query: '' }),
+      pickerOpen: s.picker,
+      gpxRef: this.gpxRef,
+      gpxHint: 'จาก Strava, OsmAnd, Komoot หรือแอปอื่น · ' + this.TRAILS.filter(t => t.id.startsWith('gpx')).length + ' ไฟล์ที่นำเข้าแล้ว',
+      pickGpx: () => this.gpxRef.current && this.gpxRef.current.click(),
+      onGpx: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) this.importGpx(f); },
+      query: s.query, setQuery: e => this.setState({ query: e.target.value }),
+      querySuffix: list.length + ' เส้นทาง',
+      listLabel: q ? 'ผลการค้นหา' : 'เรียงจากใกล้คุณที่สุด',
+      noResults: list.length === 0,
+      userCoord: this.USER[0].toFixed(4) + ', ' + this.USER[1].toFixed(4),
+      nearestTxt: near.name + ' (' + this.distTxt(this.awayFromUser(near)) + ')',
+      autoPick: () => { this.setState({ gps: 'found' }); this.selectTrail(near.id, true); this.showToast('GPS เลือก ' + near.name + ' ให้แล้ว'); },
+      trailList: list.map(({ t, d }) => {
+        const active = found && t.id === s.trailId;
+        return { name: t.name, area: t.area, len: this.geo[t.id].len.toFixed(1), max: this.geo[t.id].max.toLocaleString(), level: this.LEVEL[t.level][0], tone: this.LEVEL[t.level][1], away: this.distTxt(d), active, bd: active ? 'var(--brand-primary)' : 'var(--border-subtle)', pick: () => { this.setState({ gps: 'found' }); this.selectTrail(t.id); } };
+      }),
+      rec: s.rec, notRec: !s.rec,
+      recLabel: s.rec ? 'หยุด' : 'เริ่มเดินทาง', recShort: s.rec ? 'หยุด' : 'เริ่มเดินทาง',
+      recVariant: s.rec ? 'outline' : 'secondary',
+      bRecBg: s.rec ? 'var(--semantic-danger)' : 'var(--brand-secondary)',
+      bRecDot: s.rec ? '18px' : '20px', bRecRadius: s.rec ? '4px' : '50%',
+      aLocBottom: s.rec ? '240px' : '200px',
+      cTitle: !found ? 'กำลังหาตำแหน่ง…' : s.rec ? (s.cH < 250 ? this.fmt(s.elapsed) + ' · ' + (this.realMode ? (s.rDist || 0) : this.cum[s.idx]).toFixed(2) + ' กม.' : 'ระหว่างเดิน') : 'พร้อมออกเดิน',
+      cH: s.cH + 'px', cLocBottom: (s.cH + 16) + 'px',
+      cTrans: s.dragging ? 'none' : 'height 200ms cubic-bezier(.2,0,0,1), bottom 200ms cubic-bezier(.2,0,0,1)',
+      cBodyOpacity: Math.max(0, Math.min(1, (s.cH - 200) / 100)),
+      dragStart: this.dragStart,
+      timeTxt: this.fmt(s.elapsed), distTxt: (this.realMode ? (s.rDist || 0) : this.cum[s.idx]).toFixed(2), eleTxt: this.realMode ? (s.rEle != null ? s.rEle.toLocaleString() : '–') : (found ? this.eles[s.idx] : 2172).toLocaleString(), gainTxt: (this.realMode ? Math.round(s.rGain || 0) : gain).toLocaleString(),
+      planLine: this.profile(this.eles, this.eles.length), doneLine: this.profile(this.eles, s.idx + 1),
+      pinCount: trPins.length,
+      offDone, offNotDone: !offDone,
+      offTxt: loading ? s.offPct + '%' : 'ออฟไลน์',
+      download: () => {
+        if (s.offLoading) return;
+        const id = tr.id, urls = this.tileList(this.geo[id].route);
+        this.setState({ offLoading: id, offPct: 0 });
+        this.fetchTiles(urls, p => this.setState({ offPct: p })).then(ok => {
+          this.setState(st => ({ offLoading: null, off: ok ? { ...st.off, [offKey]: true } : st.off }));
+          this.showToast(ok ? 'ดาวน์โหลดแผนที่' + this.LAYERS[this.base()].label + ' ' + tr.name + ' แล้ว ใช้ได้แม้ไม่มีสัญญาณ' : 'ดาวน์โหลดไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่');
+        });
+      },
+      pinMode: !!s.pinMode && found && !s.rec,
+      pinModeSub: ((tr.pts && tr.pts.some(q => q[3])) ? 'ความสูงและเวลาจากไฟล์ GPX' : 'ความสูงจากเส้นทาง') + ' · ' + trPins.length + ' หมุดในเส้นทางนี้',
+      endPinMode: () => this.setState({ pinMode: false }),
+      canRoutePin: found && !s.rec && !s.pinMode && !s.picker && !s.pinsOpen && !s.histOpen,
+      startPinMode: () => this.setState({ pinMode: true, toast: null }),
+      routePinBottom: (s.cH + 72) + 'px',
+      layerOpen: !!s.layerOpen,
+      toggleLayers: () => this.setState(st => ({ layerOpen: !st.layerOpen, toast: null })),
+      closeLayers: () => this.setState({ layerOpen: false }),
+      baseShort: this.LAYERS[this.base()].label,
+      layerList: Object.entries(this.LAYERS).map(([k, Ly]) => { const on = k === this.base(); return { label: Ly.label, desc: Ly.desc, bg: on ? 'var(--brand-primary-tint)' : 'transparent', bd: on ? 'var(--brand-primary)' : 'transparent', fw: on ? '700' : '600', pick: () => { this.setState({ base: k, layerOpen: false }, () => { this.applyBase(); this.save(); }); } }; }),
+      zoomIn: () => this.map && this.map.zoomIn(1),
+      zoomOut: () => this.map && this.map.zoomOut(1),
+      zinColor: (s.zoom ?? 14) >= this.LAYERS[this.base()].max ? 'var(--border-strong)' : 'var(--text-primary)',
+      zoutColor: (s.zoom ?? 14) <= 5 ? 'var(--border-strong)' : 'var(--text-primary)',
+      zoomTop: L === 'c' ? 'calc(50% - ' + Math.round(s.cH / 2) + 'px + 40px)' : 'calc(50% - 48px)',
+      locate: () => this.map && this.map.flyTo(this.center(me, 16), 16, { duration: 0.6 }),
+      toggleRec: this.toggleRec,
+      pinHere: () => {
+        if (!found) { this.showToast('กำลังรอสัญญาณ GPS'); return; }
+        const now = new Date(), p2 = n => String(n).padStart(2, '0');
+        const pin = { id: Date.now(), trail: s.trailId, type: 'view', note: '', lat: me[0], lng: me[1], ele: this.realMode && s.rEle != null ? s.rEle : this.eles[s.idx], at: p2(now.getHours()) + ':' + p2(now.getMinutes()), photos: [] };
+        this.setState(st => ({ pins: [...st.pins, pin], lastId: pin.id }), () => this.syncPins());
+        this.showToast('ปักหมุดแล้ว · ' + pin.ele.toLocaleString() + ' ม.', 'แก้ไข', () => this.openPin(pin.id));
+      },
+      toastAction: () => this.toastFn && this.toastFn(),
+      hasToast: !!s.toast, toast: s.toast || {},
+      toastTop: s.pinMode ? 'calc(env(safe-area-inset-top) + 160px)' : 'calc(env(safe-area-inset-top) + 92px)',
+      gpsAccTxt: this.realMode ? (s.gpsAcc ? 'แม่นยำ ±' + s.gpsAcc + ' ม.' : 'GPS') : 'โหมดจำลอง (ไม่มีสัญญาณ GPS)',
+      hasSheet: !!sel, sel: selV,
+      closeSheet: () => this.setState({ selId: null }, () => this.syncPins()),
+      typeChips: Object.entries(this.TYPES).map(([k, T]) => {
+        const on = sel && sel.type === k;
+        return { label: T.label, color: T.color, bg: on ? T.tint : 'var(--surface-card)', bd: on ? T.color : 'var(--border-subtle)', pick: () => this.updSel({ type: k }) };
+      }),
+      setNote: e => this.updSel({ note: e.target.value }),
+      fileRef: this.fileRef,
+      pickPhoto: () => this.fileRef.current && this.fileRef.current.click(),
+      onFiles: e => {
+        const files = [...(e.target.files || [])]; e.target.value = '';
+        const id = s.selId;
+        files.forEach(f => this.shrink(f).then(src => {
+          this.setState(st => ({ pins: st.pins.map(p => p.id === id ? { ...p, photos: [...p.photos, src] } : p) }), () => this.syncPins());
+        }));
+        if (files.length) this.showToast('เพิ่มรูป ' + files.length + ' รูปแล้ว');
+      },
+      deletePin: () => { this.setState(st => ({ pins: st.pins.filter(p => p.id !== st.selId), selId: null }), () => this.syncPins()); this.showToast('ลบหมุดแล้ว'); },
+    };
+  }
+}
+</script>
+</body>
+</html>
